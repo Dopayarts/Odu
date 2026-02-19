@@ -12,6 +12,8 @@ import { useContributions } from './hooks/useContributions';
 import { useGoogleFormsSync } from './hooks/useGoogleFormsSync';
 import { useHints } from './hooks/useHints';
 import { useLeaderboard } from './hooks/useLeaderboard';
+import { useWordSuggestions } from './hooks/useWordSuggestions';
+import { useAppUpdate } from './hooks/useAppUpdate';
 import Leaderboard from './components/Leaderboard';
 
 const AppContent: React.FC = () => {
@@ -26,6 +28,8 @@ const AppContent: React.FC = () => {
   const { enqueue, syncStatus, processQueue } = useGoogleFormsSync(markSynced);
   const { activeHint, dismissHint } = useHints(mode);
   const leaderboard = useLeaderboard(username || undefined);
+  const wordSuggestions = useWordSuggestions();
+  const update = useAppUpdate();
 
   // When entering contribute mode, prompt for username if not set
   const handleModeChange = useCallback(() => {
@@ -77,6 +81,10 @@ const AppContent: React.FC = () => {
           setAutoCopy={setAutoCopy}
           onShowHelp={() => setShowHelp(true)}
           onShowLeaderboard={() => setShowLeaderboard(true)}
+          updateStatus={update.status}
+          updateVersion={update.version}
+          updateProgress={update.progress}
+          onUpdateClick={update.status === 'downloaded' ? update.installUpdate : update.downloadUpdate}
         />
 
         {/* Contribution stats bar — contribute mode only */}
@@ -99,6 +107,7 @@ const AppContent: React.FC = () => {
         {(mode === 'simple' || activeTab === 'write') && (
           <WriterPanel
             onSaveContribution={mode === 'contribute' ? handleSaveContribution : undefined}
+            wordSuggestions={wordSuggestions}
           />
         )}
 

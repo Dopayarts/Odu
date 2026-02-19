@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAppMode } from '../context/AppModeContext';
+import type { UpdateStatus } from '../hooks/useAppUpdate';
 
 interface HeaderProps {
   toneModeActive: boolean;
@@ -7,9 +8,13 @@ interface HeaderProps {
   setAutoCopy: (val: boolean) => void;
   onShowHelp: () => void;
   onShowLeaderboard: () => void;
+  updateStatus?: UpdateStatus;
+  updateVersion?: string | null;
+  updateProgress?: number;
+  onUpdateClick?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ toneModeActive, autoCopy, setAutoCopy, onShowHelp, onShowLeaderboard }) => {
+const Header: React.FC<HeaderProps> = ({ toneModeActive, autoCopy, setAutoCopy, onShowHelp, onShowLeaderboard, updateStatus, updateVersion, updateProgress, onUpdateClick }) => {
   const { mode, isDarkMode, setIsDarkMode, username } = useAppMode();
 
   return (
@@ -25,6 +30,31 @@ const Header: React.FC<HeaderProps> = ({ toneModeActive, autoCopy, setAutoCopy, 
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+        {updateStatus === 'available' && (
+          <button
+            onClick={onUpdateClick}
+            className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-sm bg-amber-500 text-white animate-pulse hover:bg-amber-600 hover:animate-none"
+            title={`Update to v${updateVersion}`}
+          >
+            &#x2B06; v{updateVersion}
+          </button>
+        )}
+        {updateStatus === 'downloading' && (
+          <button
+            disabled
+            className="px-3 py-2 rounded-xl text-[10px] font-black uppercase shadow-sm bg-blue-500 text-white cursor-wait"
+          >
+            {updateProgress}%
+          </button>
+        )}
+        {updateStatus === 'downloaded' && (
+          <button
+            onClick={onUpdateClick}
+            className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-sm bg-emerald-500 text-white animate-pulse hover:bg-emerald-600 hover:animate-none"
+          >
+            Restart to Update
+          </button>
+        )}
         {mode !== 'simple' && (
           <button
             onClick={onShowHelp}

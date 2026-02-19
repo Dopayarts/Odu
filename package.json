@@ -6,6 +6,7 @@
   "author": "Peace Toba Olatunji (Dopay)",
   "license": "UNLICENSED",
   "private": true,
+  "repository": "https://github.com/Dopayarts/Odu",
   "main": "main.cjs",
   "scripts": {
     "dev": "vite",
@@ -20,12 +21,16 @@
     "files": [
       "dist/**/*",
       "main.cjs",
+      "preload.cjs",
       "package.json"
     ],
+    "publish": {
+      "provider": "github"
+    },
     "copyright": "Copyright 2026 Peace Toba Olatunji (Dopay). All rights reserved.",
     "productName": "ODU Yoruba Writer",
     "win": {
-      "target": "portable",
+      "target": "nsis",
       "icon": "icon.ico",
       "legalTrademarks": "ODU Yoruba Writer is a trademark of Peace Toba Olatunji (Dopay)",
       "publisherName": "Peace Toba Olatunji (Dopay)"
@@ -50,6 +55,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.41.0",
+    "electron-updater": "^6.8.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   }

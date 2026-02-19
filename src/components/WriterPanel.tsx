@@ -2,12 +2,28 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Keyboard from './Keyboard';
 import { YORUBA_VOWELS } from '../constants';
 import { useAppMode } from '../context/AppModeContext';
+import type { WordSuggestionsReturn, WordEntry } from '../hooks/useWordSuggestions';
 
 interface WriterPanelProps {
   onSaveContribution?: (yoruba: string, english: string) => void;
+  wordSuggestions?: WordSuggestionsReturn;
 }
 
-const WriterPanel: React.FC<WriterPanelProps> = ({ onSaveContribution }) => {
+function getWordAtCursor(text: string, cursorPos: number): { word: string; start: number; end: number } | null {
+  if (!text || cursorPos === 0) return null;
+  const before = text.substring(0, cursorPos);
+  const match = before.match(/(\S+)$/);
+  if (!match) return null;
+  const word = match[1];
+  const start = cursorPos - word.length;
+  // Find end of current word
+  const afterCursor = text.substring(cursorPos);
+  const endMatch = afterCursor.match(/^(\S*)/);
+  const end = cursorPos + (endMatch ? endMatch[1].length : 0);
+  return { word, start, end };
+}
+
+const WriterPanel: React.FC<WriterPanelProps> = ({ onSaveContribution, wordSuggestions }) => {
   const { isDarkMode, mode } = useAppMode();
   const [editorText, setEditorText] = useState('');
   const [englishText, setEnglishText] = useState('');
@@ -22,8 +38,54 @@ const WriterPanel: React.FC<WriterPanelProps> = ({ onSaveContribution }) => {
   const [activeVowel, setActiveVowel] = useState<string | null>(null);
   const [diacriticIndex, setDiacriticIndex] = useState(0);
 
+  const [activeSuggestions, setActiveSuggestions] = useState<WordEntry[]>([]);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0);
+  const [cursorWord, setCursorWord] = useState<{ word: string; start: number; end: number } | null>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const effectiveShift = isShiftToggled || isShiftPressed;
+
+  // Update suggestions when editor text or cursor changes
+  const updateSuggestions = useCallback(() => {
+    if (!wordSuggestions) {
+      setActiveSuggestions([]);
+      return;
+    }
+    const cursorPos = editorRef.current?.selectionStart || 0;
+    const wordInfo = getWordAtCursor(editorText, cursorPos);
+    setCursorWord(wordInfo);
+
+    if (wordInfo && wordInfo.word.length >= 2) {
+      const matches = wordSuggestions.getSuggestions(wordInfo.word);
+      setActiveSuggestions(matches);
+      setSelectedSuggestionIndex(0);
+    } else {
+      setActiveSuggestions([]);
+    }
+  }, [editorText, wordSuggestions]);
+
+  useEffect(() => {
+    updateSuggestions();
+  }, [updateSuggestions]);
+
+  const acceptSuggestion = useCallback((entry: WordEntry) => {
+    if (!cursorWord || !editorRef.current) return;
+    const before = editorText.substring(0, cursorWord.start);
+    const after = editorText.substring(cursorWord.end);
+    const newText = before + entry.yoruba + after;
+    setEditorText(newText);
+    setActiveSuggestions([]);
+
+    const newCursorPos = cursorWord.start + entry.yoruba.length;
+    if (autoCopy) navigator.clipboard.writeText(newText).catch(() => {});
+    setTimeout(() => {
+      if (editorRef.current) {
+        editorRef.current.selectionStart = editorRef.current.selectionEnd = newCursorPos;
+        editorRef.current.focus();
+      }
+    }, 0);
+  }, [editorText, cursorWord, autoCopy]);
 
   const handleInput = useCallback((char: string) => {
     const start = editorRef.current?.selectionStart || 0;
@@ -86,6 +148,30 @@ const WriterPanel: React.FC<WriterPanelProps> = ({ onSaveContribution }) => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Suggestion keyboard navigation
+      if (activeSuggestions.length > 0 && document.activeElement === editorRef.current) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setSelectedSuggestionIndex(prev => Math.min(prev + 1, activeSuggestions.length - 1));
+          return;
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setSelectedSuggestionIndex(prev => Math.max(prev - 1, 0));
+          return;
+        }
+        if (e.key === 'Tab' || e.key === 'Enter') {
+          e.preventDefault();
+          acceptSuggestion(activeSuggestions[selectedSuggestionIndex]);
+          return;
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setActiveSuggestions([]);
+          return;
+        }
+      }
+
       if (e.key === 'Shift') {
         const now = Date.now();
         const diff = now - lastShiftPressRef.current;
@@ -124,13 +210,46 @@ const WriterPanel: React.FC<WriterPanelProps> = ({ onSaveContribution }) => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [activeVowel, diacriticIndex, confirmDiacritic, toneModeActive]);
+  }, [activeVowel, diacriticIndex, confirmDiacritic, toneModeActive, activeSuggestions, selectedSuggestionIndex, acceptSuggestion]);
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(editorText);
     setShowToast(true);
     setTimeout(() => setShowToast(false), 2000);
   };
+
+  const suggestionDropdown = activeSuggestions.length > 0 && (
+    <div
+      ref={suggestionsRef}
+      className={`absolute left-3 right-3 z-50 rounded-2xl shadow-xl border-2 overflow-hidden transition-all ${
+        isDarkMode
+          ? 'bg-slate-900 border-slate-700 shadow-black/40'
+          : 'bg-white border-slate-200 shadow-slate-300/40'
+      }`}
+      style={{ top: '100%', marginTop: '4px' }}
+    >
+      {activeSuggestions.map((entry, i) => (
+        <button
+          key={`${entry.yoruba}-${i}`}
+          onMouseDown={(e) => { e.preventDefault(); acceptSuggestion(entry); }}
+          className={`w-full text-left px-4 py-2.5 flex items-baseline gap-3 transition-colors ${
+            i === selectedSuggestionIndex
+              ? isDarkMode
+                ? 'bg-amber-900/40 text-amber-200'
+                : 'bg-amber-50 text-amber-900'
+              : isDarkMode
+                ? 'hover:bg-slate-800 text-slate-200'
+                : 'hover:bg-slate-50 text-slate-800'
+          } ${i > 0 ? (isDarkMode ? 'border-t border-slate-800' : 'border-t border-slate-100') : ''}`}
+        >
+          <span className="font-bold text-base">{entry.yoruba}</span>
+          <span className={`text-sm italic ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+            {entry.english}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
 
   return (
     <div className="flex flex-col gap-2 sm:gap-4">
@@ -156,17 +275,22 @@ const WriterPanel: React.FC<WriterPanelProps> = ({ onSaveContribution }) => {
               <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
                 Yoruba (with tones)
               </label>
-              <textarea
-                ref={editorRef}
-                value={editorText}
-                onChange={(e) => setEditorText(e.target.value)}
-                placeholder="Type Yoruba here — double-press SHIFT for Tones..."
-                className={`w-full min-h-[5.5rem] max-h-52 p-3 sm:p-5 text-xl sm:text-2xl font-medium leading-relaxed rounded-2xl border-2 outline-none transition-all resize-y shadow-inner ${
-                  toneModeActive
-                    ? 'border-emerald-500 bg-emerald-50/5 ring-4 ring-emerald-500/5'
-                    : isDarkMode ? 'bg-slate-950 border-amber-800/50 text-slate-100 focus:border-emerald-600' : 'bg-white border-amber-200 text-slate-900 focus:border-emerald-600'
-                }`}
-              />
+              <div className="relative">
+                <textarea
+                  ref={editorRef}
+                  value={editorText}
+                  onChange={(e) => setEditorText(e.target.value)}
+                  onSelect={updateSuggestions}
+                  onClick={updateSuggestions}
+                  placeholder="Type Yoruba here — double-press SHIFT for Tones..."
+                  className={`w-full min-h-[5.5rem] max-h-52 p-3 sm:p-5 text-xl sm:text-2xl font-medium leading-relaxed rounded-2xl border-2 outline-none transition-all resize-y shadow-inner ${
+                    toneModeActive
+                      ? 'border-emerald-500 bg-emerald-50/5 ring-4 ring-emerald-500/5'
+                      : isDarkMode ? 'bg-slate-950 border-amber-800/50 text-slate-100 focus:border-emerald-600' : 'bg-white border-amber-200 text-slate-900 focus:border-emerald-600'
+                  }`}
+                />
+                {suggestionDropdown}
+              </div>
               {toneModeActive && (
                 <div className="absolute top-10 right-4 bg-emerald-600 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-xl animate-pulse-slow">
                   Scale Active: Press a Vowel
@@ -185,17 +309,22 @@ const WriterPanel: React.FC<WriterPanelProps> = ({ onSaveContribution }) => {
           </div>
         ) : (
           <div className="relative group">
-            <textarea
-              ref={editorRef}
-              value={editorText}
-              onChange={(e) => setEditorText(e.target.value)}
-              placeholder="Start typing or double-press SHIFT for Tones (Do-Re-Mi)..."
-              className={`w-full min-h-[10rem] max-h-[24rem] p-4 sm:p-8 text-xl sm:text-2xl font-medium leading-relaxed rounded-3xl border-2 outline-none transition-all resize-y shadow-inner ${
-                toneModeActive
-                  ? 'border-emerald-500 bg-emerald-50/5 ring-4 ring-emerald-500/5'
-                  : isDarkMode ? 'bg-slate-950 border-slate-700 text-slate-100 focus:border-emerald-600' : 'bg-white border-slate-100 text-slate-900 focus:border-emerald-600'
-              }`}
-            />
+            <div className="relative">
+              <textarea
+                ref={editorRef}
+                value={editorText}
+                onChange={(e) => setEditorText(e.target.value)}
+                onSelect={updateSuggestions}
+                onClick={updateSuggestions}
+                placeholder="Start typing or double-press SHIFT for Tones (Do-Re-Mi)..."
+                className={`w-full min-h-[10rem] max-h-[24rem] p-4 sm:p-8 text-xl sm:text-2xl font-medium leading-relaxed rounded-3xl border-2 outline-none transition-all resize-y shadow-inner ${
+                  toneModeActive
+                    ? 'border-emerald-500 bg-emerald-50/5 ring-4 ring-emerald-500/5'
+                    : isDarkMode ? 'bg-slate-950 border-slate-700 text-slate-100 focus:border-emerald-600' : 'bg-white border-slate-100 text-slate-900 focus:border-emerald-600'
+                }`}
+              />
+              {suggestionDropdown}
+            </div>
             {toneModeActive && (
               <div className="absolute top-4 right-6 bg-emerald-600 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-xl animate-pulse-slow">
                 Scale Active: Press a Vowel

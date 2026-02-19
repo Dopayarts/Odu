@@ -49,3 +49,5 @@ export const GOOGLE_FORMS_CONFIG = {
 // PLACEHOLDER: Replace with your published Google Sheet CSV URL
 // Steps: Open linked Sheet → File → Share → Publish to web → select CSV → copy link
 export const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS2LXvGndE7mpmb6giesgNXeY8ZJgjFJIYAFLrJ3AD0HMnoStbnHfyEgIJ-0qOlzXQIuzuCAa_s3-0Q/pub?output=csv';
+
+export const SUGGESTIONS_CACHE_KEY = 'odu-suggestions-cache';
