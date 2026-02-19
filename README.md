@@ -1,20 +1,7 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Odu
+A lightweight, user-friendly Yoruba keyboard designed to make accurate tonal writing effortless for authors, students, and language learners.
+This tool simplifies the input of Yoruba diacritics by introducing an intuitive interaction system: pressing Shift twice activates Diacritic Mode, allowing users to quickly select the appropriate tonal variant of a letter (e.g., ẹ, ọ, ṣ, and tone-marked vowels) without complex key combinations.
 
-# Run and deploy your AI Studio app
+Built to support writing, education, and language preservation, the keyboard reduces friction in typing fully marked Yoruba text across creative, academic, and everyday contexts. It is especially useful for learners developing tonal accuracy and for writers aiming to maintain linguistic integrity in digital spaces.
 
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/drive/1ZgJGgbVrmJWE5HHhIG9mhte1NpPkvuPr
-
-## Run Locally
-
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+The project contributes to broader efforts in local language computing and AI plurality by enabling more inclusive and culturally grounded text input systems.
