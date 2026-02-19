@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+/* Your custom styles below */
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(16, 185, 129, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.6), 0 0 32px rgba(16, 185, 129, 0.2);
+  }
+}
+
+.glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
