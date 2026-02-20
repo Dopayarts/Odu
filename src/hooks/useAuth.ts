@@ -20,6 +20,7 @@ import { auth, db } from '../firebase';
 interface AuthState {
   user: User | null;
   username: string;
+  location: string;
   loading: boolean;
 }
 
@@ -27,30 +28,52 @@ export function useAuth() {
   const [state, setState] = useState<AuthState>({
     user: null,
     username: '',
+    location: '',
     loading: true,
   });
   const [error, setError] = useState('');
 
   // Listen to auth state changes (auto-restore session)
   useEffect(() => {
+    let resolved = false;
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      resolved = true;
       if (user) {
-        // Fetch username from Firestore
         try {
           const userDoc = await getDoc(doc(db, 'users', user.uid));
-          const username = userDoc.exists() ? userDoc.data().username || '' : '';
-          setState({ user, username, loading: false });
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            // Enforce ban: sign out immediately if banned
+            if (data.banned) {
+              await signOut(auth);
+              setState({ user: null, username: '', location: '', loading: false });
+              setError('Your account has been suspended for violating community guidelines.');
+              return;
+            }
+            setState({
+              user,
+              username: data.username || '',
+              location: data.location || '',
+              loading: false,
+            });
+          } else {
+            setState({ user, username: '', location: '', loading: false });
+          }
         } catch {
-          setState({ user, username: '', loading: false });
+          setState({ user, username: '', location: '', loading: false });
         }
       } else {
-        setState({ user: null, username: '', loading: false });
+        setState({ user: null, username: '', location: '', loading: false });
       }
     });
-    return unsubscribe;
+    // Timeout: if Firebase hasn't responded in 5s, stop loading
+    const timeout = setTimeout(() => {
+      if (!resolved) setState({ user: null, username: '', location: '', loading: false });
+    }, 5000);
+    return () => { unsubscribe(); clearTimeout(timeout); };
   }, []);
 
-  const register = useCallback(async (email: string, username: string, password: string) => {
+  const register = useCallback(async (email: string, username: string, password: string, location: string) => {
     setError('');
     try {
       // Check username uniqueness
@@ -71,10 +94,13 @@ export function useAuth() {
         uid: cred.user.uid,
         username: username.trim(),
         email: email.trim(),
+        location: location.trim(),
         createdAt: new Date().toISOString(),
+        banned: false,
+        warned: false,
       });
 
-      setState({ user: cred.user, username: username.trim(), loading: false });
+      setState({ user: cred.user, username: username.trim(), location: location.trim(), loading: false });
       return true;
     } catch (err: any) {
       const msg = err?.code === 'auth/email-already-in-use'
@@ -92,11 +118,19 @@ export function useAuth() {
     try {
       const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
 
-      // Fetch username from Firestore
       const userDoc = await getDoc(doc(db, 'users', cred.user.uid));
-      const username = userDoc.exists() ? userDoc.data().username || '' : '';
-
-      setState({ user: cred.user, username, loading: false });
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        // Block banned users from logging in
+        if (data.banned) {
+          await signOut(auth);
+          setError('Your account has been suspended for violating community guidelines.');
+          return false;
+        }
+        setState({ user: cred.user, username: data.username || '', location: data.location || '', loading: false });
+      } else {
+        setState({ user: cred.user, username: '', location: '', loading: false });
+      }
       return true;
     } catch (err: any) {
       const msg = err?.code === 'auth/invalid-credential'
@@ -111,12 +145,13 @@ export function useAuth() {
 
   const logout = useCallback(async () => {
     await signOut(auth);
-    setState({ user: null, username: '', loading: false });
+    setState({ user: null, username: '', location: '', loading: false });
   }, []);
 
   return {
     user: state.user,
     username: state.username,
+    location: state.location,
     isLoggedIn: !!state.user,
     loading: state.loading,
     error,

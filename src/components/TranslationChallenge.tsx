@@ -6,7 +6,116 @@ import { useQuizData } from '../hooks/useQuizData';
 import { useQuiz } from '../hooks/useQuiz';
 import { QuizAnswer } from '../../types';
 
-// Word highlighting: compare user words against correct answer
+// ─── Hearts display ──────────────────────────────────────────────────────────
+
+function formatTime(ms: number): string {
+  const totalSeconds = Math.ceil(ms / 1000);
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
+const HeartsRow: React.FC<{
+  hearts: number;
+  maxHearts: number;
+  isDarkMode: boolean;
+}> = ({ hearts, maxHearts, isDarkMode }) => (
+  <div className="flex items-center gap-1">
+    {Array.from({ length: maxHearts }).map((_, i) => (
+      <span
+        key={i}
+        className={`text-xl transition-all ${
+          i < hearts
+            ? 'text-red-500 drop-shadow-sm'
+            : isDarkMode ? 'text-slate-700' : 'text-slate-300'
+        }`}
+      >
+        ♥
+      </span>
+    ))}
+  </div>
+);
+
+// ─── No-hearts screen ─────────────────────────────────────────────────────────
+
+const NoHeartsScreen: React.FC<{
+  msUntilRefill: number | null;
+  contribProgress: number;
+  contributionsNeeded: number;
+  isDarkMode: boolean;
+  onContribute: () => void;
+}> = ({ msUntilRefill, contribProgress, contributionsNeeded, isDarkMode, onContribute }) => {
+  const [, forceUpdate] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => forceUpdate(n => n + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  return (
+    <div className="flex flex-col gap-4 px-4 sm:px-6 py-8">
+      <div className={`rounded-2xl p-6 sm:p-8 border-2 text-center ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-red-50 border-red-200'}`}>
+        <div className="flex justify-center gap-1 mb-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <span key={i} className={`text-3xl ${isDarkMode ? 'text-slate-700' : 'text-red-200'}`}>♥</span>
+          ))}
+        </div>
+        <h2 className={`text-xl font-black mb-2 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
+          No Hearts Left
+        </h2>
+        <p className={`text-sm mb-6 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+          You've used all your hearts. Recharge by waiting or contributing.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Wait option */}
+          <div className={`rounded-2xl p-4 border-2 text-left ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+            <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+              Wait
+            </p>
+            <p className={`text-2xl font-black mb-1 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
+              ♥ +1
+            </p>
+            {msUntilRefill !== null ? (
+              <p className={`text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
+                Ready in {formatTime(msUntilRefill)}
+              </p>
+            ) : (
+              <p className={`text-xs ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>Refilling soon…</p>
+            )}
+          </div>
+
+          {/* Contribute option */}
+          <button
+            onClick={onContribute}
+            className={`rounded-2xl p-4 border-2 text-left transition-all hover:scale-[1.02] active:scale-95 ${isDarkMode ? 'bg-emerald-900/30 border-emerald-700 hover:border-emerald-500' : 'bg-emerald-50 border-emerald-200 hover:border-emerald-400'}`}
+          >
+            <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+              Contribute Now
+            </p>
+            <p className={`text-2xl font-black mb-1 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
+              ♥ +1
+            </p>
+            <div className="w-full h-1.5 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700 mb-1">
+              <div
+                className="h-full bg-emerald-500 rounded-full transition-all"
+                style={{ width: `${(contribProgress / contributionsNeeded) * 100}%` }}
+              />
+            </div>
+            <p className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+              {contribProgress}/{contributionsNeeded} sentences submitted
+            </p>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Word highlighting ────────────────────────────────────────────────────────
+
 const WordHighlight: React.FC<{ userText: string; correctAnswer: string; isDarkMode: boolean }> = ({
   userText, correctAnswer, isDarkMode,
 }) => {
@@ -36,7 +145,8 @@ const WordHighlight: React.FC<{ userText: string; correctAnswer: string; isDarkM
   );
 };
 
-// Countdown timer display
+// ─── Countdown timer ──────────────────────────────────────────────────────────
+
 const CountdownTimer: React.FC<{ timeLeft: number; isDarkMode: boolean }> = ({ timeLeft, isDarkMode }) => {
   const isUrgent = timeLeft <= 5;
   return (
@@ -52,7 +162,8 @@ const CountdownTimer: React.FC<{ timeLeft: number; isDarkMode: boolean }> = ({ t
   );
 };
 
-// Fill the gap UI component
+// ─── Fill-gap UI ──────────────────────────────────────────────────────────────
+
 const FillGapChallenge: React.FC<{
   fillGap: NonNullable<ReturnType<typeof useQuiz>['currentFillGap']>;
   answered: boolean;
@@ -64,7 +175,6 @@ const FillGapChallenge: React.FC<{
   );
   const [usedOptions, setUsedOptions] = useState<Set<number>>(new Set());
 
-  // Reset when fillGap changes
   useEffect(() => {
     setFilledGaps(new Array(fillGap.gappedWords.length).fill(null));
     setUsedOptions(new Set());
@@ -80,7 +190,6 @@ const FillGapChallenge: React.FC<{
     setFilledGaps(newFilled);
     setUsedOptions(prev => new Set([...prev, optionIdx]));
 
-    // Auto-submit when all gaps filled
     if (newFilled.every(g => g !== null)) {
       onSubmit(newFilled.filter((w): w is string => w !== null));
     }
@@ -93,7 +202,6 @@ const FillGapChallenge: React.FC<{
     newFilled[gapIdx] = null;
     setFilledGaps(newFilled);
 
-    // Find which option index to re-enable
     const optIdx = fillGap.options.findIndex((w, i) => w === removedWord && usedOptions.has(i));
     if (optIdx !== -1) {
       setUsedOptions(prev => {
@@ -104,7 +212,6 @@ const FillGapChallenge: React.FC<{
     }
   };
 
-  // Build display sentence with gaps
   let gapCounter = 0;
   const sentenceDisplay = fillGap.displayWords.map((word, i) => {
     if (word !== null) {
@@ -138,7 +245,6 @@ const FillGapChallenge: React.FC<{
 
   return (
     <div className="flex flex-col gap-4">
-      {/* English meaning */}
       <div className={`rounded-2xl p-6 border-2 ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-blue-50 border-blue-200'}`}>
         <p className={`text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
           English Meaning
@@ -155,7 +261,6 @@ const FillGapChallenge: React.FC<{
         </span>
       </div>
 
-      {/* Yoruba sentence with gaps */}
       <div className={`rounded-2xl p-6 border-2 ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-amber-50 border-amber-200'}`}>
         <p className={`text-[10px] font-black uppercase tracking-widest mb-3 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
           Fill in the gaps
@@ -165,7 +270,6 @@ const FillGapChallenge: React.FC<{
         </div>
       </div>
 
-      {/* Word options */}
       <div className="flex flex-wrap gap-2">
         {fillGap.options.map((word, i) => (
           <button
@@ -190,7 +294,8 @@ const FillGapChallenge: React.FC<{
   );
 };
 
-// Answer review screen
+// ─── Answer review ────────────────────────────────────────────────────────────
+
 const AnswerReview: React.FC<{
   answers: QuizAnswer[];
   correct: number;
@@ -254,8 +359,8 @@ const AnswerReview: React.FC<{
   };
 
   return (
-    <div className="flex flex-col gap-4 px-6 py-8">
-      <div className={`rounded-2xl p-8 border-2 text-center ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-emerald-50 border-emerald-200'}`}>
+    <div className="flex flex-col gap-4 px-4 sm:px-6 py-8">
+      <div className={`rounded-2xl p-6 sm:p-8 border-2 text-center ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-emerald-50 border-emerald-200'}`}>
         <div className="text-5xl mb-4">{emoji}</div>
         <p className={`text-3xl font-black mb-2 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
           {correct}/{total}
@@ -265,7 +370,6 @@ const AnswerReview: React.FC<{
         </p>
       </div>
 
-      {/* Answer review list */}
       <div className={`rounded-2xl p-4 border-2 max-h-80 overflow-y-auto ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`}>
         <h3 className={`text-[10px] font-black uppercase tracking-widest mb-3 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
           Answer Review
@@ -275,7 +379,7 @@ const AnswerReview: React.FC<{
       </div>
 
       <p className={`text-sm text-center ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-        Come back tomorrow for new questions. Why not contribute to the AI while you wait?
+        Come back tomorrow for new questions — or contribute sentences to earn more hearts ♥
       </p>
       <button
         onClick={onContribute}
@@ -288,7 +392,25 @@ const AnswerReview: React.FC<{
   );
 };
 
-const TranslationChallenge: React.FC = () => {
+// ─── Main component ───────────────────────────────────────────────────────────
+
+interface TranslationChallengeProps {
+  hearts: number;
+  maxHearts: number;
+  msUntilRefill: number | null;
+  contribProgress: number;
+  contributionsNeeded: number;
+  onUseHeart: () => void;
+}
+
+const TranslationChallenge: React.FC<TranslationChallengeProps> = ({
+  hearts,
+  maxHearts,
+  msUntilRefill,
+  contribProgress,
+  contributionsNeeded,
+  onUseHeart,
+}) => {
   const { isDarkMode, setMode } = useAppMode();
   const { questions } = useQuizData();
   const quiz = useQuiz(questions);
@@ -300,6 +422,7 @@ const TranslationChallenge: React.FC = () => {
   const lastShiftPressRef = useRef<number>(0);
   const [activeVowel, setActiveVowel] = useState<string | null>(null);
   const [diacriticIndex, setDiacriticIndex] = useState(0);
+  const heartUsedRef = useRef(false);
 
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const effectiveShift = isShiftToggled || isShiftPressed;
@@ -386,6 +509,19 @@ const TranslationChallenge: React.FC = () => {
     return () => { window.removeEventListener('keydown', handleKeyDown); window.removeEventListener('keyup', handleKeyUp); };
   }, [activeVowel, diacriticIndex, confirmDiacritic, toneModeActive]);
 
+  const handleStartQuiz = useCallback(() => {
+    if (!heartUsedRef.current) {
+      onUseHeart();
+      heartUsedRef.current = true;
+    }
+    quiz.startQuiz();
+  }, [quiz, onUseHeart]);
+
+  // Reset heart usage flag when quiz resets
+  useEffect(() => {
+    if (!quiz.started) heartUsedRef.current = false;
+  }, [quiz.started]);
+
   const handleSubmit = () => {
     if (!yorubaText.trim()) return;
     quiz.checkAnswer(yorubaText.trim());
@@ -396,12 +532,25 @@ const TranslationChallenge: React.FC = () => {
     quiz.nextQuestion();
   };
 
-  // Daily limit reached
+  // ── No hearts — show recharge screen ────────────────────────────────────────
+  if (hearts <= 0 && !quiz.started) {
+    return (
+      <NoHeartsScreen
+        msUntilRefill={msUntilRefill}
+        contribProgress={contribProgress}
+        contributionsNeeded={contributionsNeeded}
+        isDarkMode={isDarkMode}
+        onContribute={() => setMode('contribute')}
+      />
+    );
+  }
+
+  // ── Daily limit reached ──────────────────────────────────────────────────────
   if (quiz.isDailyDone && !quiz.isComplete) {
     const todayScore = quiz.history.find(s => s.date === new Date().toISOString().slice(0, 10));
     return (
-      <div className="flex flex-col gap-4 px-6 py-8">
-        <div className={`rounded-2xl p-8 border-2 text-center ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-amber-50 border-amber-200'}`}>
+      <div className="flex flex-col gap-4 px-4 sm:px-6 py-8">
+        <div className={`rounded-2xl p-6 sm:p-8 border-2 text-center ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-amber-50 border-amber-200'}`}>
           <div className="text-4xl mb-4">{'\u{1F3AF}'}</div>
           {todayScore && (
             <p className={`text-2xl font-black mb-2 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
@@ -411,8 +560,9 @@ const TranslationChallenge: React.FC = () => {
           <p className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
             You've completed today's quiz!
           </p>
-          <p className={`text-sm mb-6 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-            Come back tomorrow for new questions. While you wait, why not help train the ODU AI?
+          <HeartsRow hearts={hearts} maxHearts={maxHearts} isDarkMode={isDarkMode} />
+          <p className={`text-sm mt-3 mb-6 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+            Come back tomorrow for new questions — or contribute sentences to earn more hearts ♥
           </p>
           <button
             onClick={() => setMode('contribute')}
@@ -426,7 +576,7 @@ const TranslationChallenge: React.FC = () => {
     );
   }
 
-  // Quiz complete — show answer review
+  // ── Quiz complete ────────────────────────────────────────────────────────────
   if (quiz.isComplete) {
     return (
       <AnswerReview
@@ -439,15 +589,24 @@ const TranslationChallenge: React.FC = () => {
     );
   }
 
-  // Start screen — show instructions and start button
+  // ── Start screen ─────────────────────────────────────────────────────────────
   if (!quiz.started && quiz.currentQuestion) {
     return (
-      <div className="flex flex-col gap-4 px-6 py-8">
-        <div className={`rounded-2xl p-8 border-2 text-center ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-amber-50 border-amber-200'}`}>
+      <div className="flex flex-col gap-4 px-4 sm:px-6 py-8">
+        <div className={`rounded-2xl p-6 sm:p-8 border-2 text-center ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-amber-50 border-amber-200'}`}>
           <div className="text-5xl mb-4">{'\u{1F4DA}'}</div>
           <h2 className={`text-2xl font-black mb-3 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
             Daily Yoruba Quiz
           </h2>
+
+          {/* Hearts display */}
+          <div className="flex flex-col items-center gap-1 mb-4">
+            <HeartsRow hearts={hearts} maxHearts={maxHearts} isDarkMode={isDarkMode} />
+            <p className={`text-[10px] font-bold uppercase tracking-widest ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+              {hearts} {hearts === 1 ? 'heart' : 'hearts'} remaining — 1 used per round
+            </p>
+          </div>
+
           <p className={`text-sm mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
             {quiz.totalQuestions} questions in two phases:
           </p>
@@ -460,10 +619,10 @@ const TranslationChallenge: React.FC = () => {
             </div>
           </div>
           <p className={`text-xs mb-6 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-            Timer varies by difficulty: Beginner 20s, Intermediate 40s, Advanced 60s
+            Timer varies by difficulty: Beginner 20s · Intermediate 40s · Advanced 60s
           </p>
           <button
-            onClick={quiz.startQuiz}
+            onClick={handleStartQuiz}
             className="px-10 py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase text-sm tracking-wider shadow-xl shadow-emerald-900/40 hover:scale-105 active:scale-95 transition-all"
           >
             Start Lesson
@@ -474,10 +633,10 @@ const TranslationChallenge: React.FC = () => {
     );
   }
 
-  // No questions available
+  // ── No questions available ───────────────────────────────────────────────────
   if (!quiz.currentQuestion) {
     return (
-      <div className="px-6 py-8">
+      <div className="px-4 sm:px-6 py-8">
         <div className={`rounded-2xl p-6 text-center ${isDarkMode ? 'bg-slate-800/50' : 'bg-slate-100'}`}>
           <p className="text-sm text-slate-500">No quiz questions available yet.</p>
         </div>
@@ -485,35 +644,41 @@ const TranslationChallenge: React.FC = () => {
     );
   }
 
-  // Fill the Gap phase
+  // ── Progress bar header (shared) ─────────────────────────────────────────────
+  const progressHeader = (
+    <div className="px-4 sm:px-6 pt-4">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-3">
+          <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+            Q {quiz.questionIndex + 1}/{quiz.totalQuestions}
+          </span>
+          <HeartsRow hearts={hearts} maxHearts={maxHearts} isDarkMode={isDarkMode} />
+        </div>
+        <div className="flex items-center gap-3">
+          <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+            Score: {quiz.correct}/{quiz.questionIndex + (quiz.answered ? 1 : 0)}
+          </span>
+          {!quiz.answered && <CountdownTimer timeLeft={quiz.timeLeft} isDarkMode={isDarkMode} />}
+        </div>
+      </div>
+      <div className={`w-full h-2 rounded-full overflow-hidden ${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`}>
+        <div
+          className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+          style={{ width: `${((quiz.questionIndex + (quiz.answered ? 1 : 0)) / quiz.totalQuestions) * 100}%` }}
+        />
+      </div>
+    </div>
+  );
+
+  // ── Fill-the-gap phase ────────────────────────────────────────────────────────
   if (quiz.phase === 'fillgap' && quiz.currentFillGap) {
     return (
       <div className="flex flex-col gap-4">
-        {/* Progress bar + timer */}
-        <div className="px-6 pt-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-              Question {quiz.questionIndex + 1}/{quiz.totalQuestions}
-            </span>
-            <div className="flex items-center gap-3">
-              <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                Score: {quiz.correct}/{quiz.questionIndex + (quiz.answered ? 1 : 0)}
-              </span>
-              {!quiz.answered && <CountdownTimer timeLeft={quiz.timeLeft} isDarkMode={isDarkMode} />}
-            </div>
-          </div>
-          <div className={`w-full h-2 rounded-full overflow-hidden ${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`}>
-            <div
-              className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-              style={{ width: `${((quiz.questionIndex + (quiz.answered ? 1 : 0)) / quiz.totalQuestions) * 100}%` }}
-            />
-          </div>
-          <p className={`text-[9px] font-bold uppercase tracking-widest mt-1 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+        {progressHeader}
+        <div className="px-4 sm:px-6">
+          <p className={`text-[9px] font-bold uppercase tracking-widest mb-3 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
             Phase 2: Fill the Gap
           </p>
-        </div>
-
-        <div className="px-6">
           <FillGapChallenge
             fillGap={quiz.currentFillGap}
             answered={quiz.answered}
@@ -522,9 +687,8 @@ const TranslationChallenge: React.FC = () => {
           />
         </div>
 
-        {/* Answer result */}
         {quiz.lastResult && (
-          <div className="px-6">
+          <div className="px-4 sm:px-6">
             <div className={`rounded-2xl p-4 border-2 ${
               quiz.lastResult.isCorrect
                 ? isDarkMode ? 'bg-emerald-900/30 border-emerald-700' : 'bg-emerald-50 border-emerald-300'
@@ -543,7 +707,7 @@ const TranslationChallenge: React.FC = () => {
         )}
 
         {quiz.answered && (
-          <div className="px-6">
+          <div className="px-4 sm:px-6">
             <button
               onClick={handleNext}
               className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-lg hover:scale-105 active:scale-95 transition-all"
@@ -556,35 +720,14 @@ const TranslationChallenge: React.FC = () => {
     );
   }
 
-  // Translation phase (questions 1-5)
+  // ── Translation phase ─────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col gap-4">
-      {/* Progress bar + timer */}
-      <div className="px-6 pt-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-            Question {quiz.questionIndex + 1}/{quiz.totalQuestions}
-          </span>
-          <div className="flex items-center gap-3">
-            <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-              Score: {quiz.correct}/{quiz.questionIndex + (quiz.answered ? 1 : 0)}
-            </span>
-            {!quiz.answered && <CountdownTimer timeLeft={quiz.timeLeft} isDarkMode={isDarkMode} />}
-          </div>
-        </div>
-        <div className={`w-full h-2 rounded-full overflow-hidden ${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`}>
-          <div
-            className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-            style={{ width: `${((quiz.questionIndex + (quiz.answered ? 1 : 0)) / quiz.totalQuestions) * 100}%` }}
-          />
-        </div>
-        <p className={`text-[9px] font-bold uppercase tracking-widest mt-1 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
+      {progressHeader}
+      <div className="px-4 sm:px-6">
+        <p className={`text-[9px] font-bold uppercase tracking-widest mb-3 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
           Phase 1: Translation
         </p>
-      </div>
-
-      {/* Challenge card */}
-      <div className="px-6">
         <div className={`rounded-2xl p-6 border-2 ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-amber-50 border-amber-200'}`}>
           <p className={`text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
             Translate to Yoruba
@@ -602,9 +745,8 @@ const TranslationChallenge: React.FC = () => {
         </div>
       </div>
 
-      {/* Answer result */}
       {quiz.lastResult && (
-        <div className="px-6">
+        <div className="px-4 sm:px-6">
           <div className={`rounded-2xl p-4 border-2 ${
             quiz.lastResult.isCorrect
               ? isDarkMode ? 'bg-emerald-900/30 border-emerald-700' : 'bg-emerald-50 border-emerald-300'
@@ -622,9 +764,8 @@ const TranslationChallenge: React.FC = () => {
         </div>
       )}
 
-      {/* Word highlighting */}
       {!quiz.answered && quiz.currentQuestion.yoruba_answer && yorubaText.trim() && (
-        <div className="px-6">
+        <div className="px-4 sm:px-6">
           <WordHighlight
             userText={yorubaText}
             correctAnswer={quiz.currentQuestion.yoruba_answer}
@@ -633,15 +774,14 @@ const TranslationChallenge: React.FC = () => {
         </div>
       )}
 
-      {/* Yoruba input */}
-      <div className="px-6">
+      <div className="px-4 sm:px-6">
         <textarea
           ref={editorRef}
           value={yorubaText}
           onChange={e => setYorubaText(e.target.value)}
           placeholder="Type your Yoruba translation here..."
           disabled={quiz.answered}
-          className={`w-full h-32 p-6 text-xl font-medium leading-relaxed rounded-2xl border-2 outline-none transition-all resize-none ${
+          className={`w-full h-28 sm:h-32 p-4 sm:p-6 text-xl font-medium leading-relaxed rounded-2xl border-2 outline-none transition-all resize-none ${
             quiz.answered
               ? isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-400'
               : toneModeActive
@@ -669,8 +809,7 @@ const TranslationChallenge: React.FC = () => {
         </div>
       </div>
 
-      {/* Keyboard */}
-      <div className={`p-6 border-t transition-colors duration-300 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-100'}`}>
+      <div className={`p-4 sm:p-6 border-t transition-colors duration-300 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-100'}`}>
         <Keyboard
           onInput={handleInput}
           onBackspace={handleBackspace}
@@ -690,6 +829,8 @@ const TranslationChallenge: React.FC = () => {
     </div>
   );
 };
+
+// ─── Score history ────────────────────────────────────────────────────────────
 
 const ScoreHistory: React.FC<{ history: { date: string; correct: number; total: number }[]; isDarkMode: boolean }> = ({ history, isDarkMode }) => {
   const recent = history.slice(-7).reverse();

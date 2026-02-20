@@ -43,6 +43,7 @@ export const GOOGLE_FORMS_CONFIG = {
         email: 'entry.1821413739',
         mode: 'entry.1838429192',
         timestamp: 'entry.116415145',
+        location: 'entry.1017030800',
     },
 };
 

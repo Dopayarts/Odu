@@ -46,9 +46,9 @@ export function useContributions(currentUsername?: string) {
       : contributions;
     if (myContributions.length === 0) return;
     const BOM = '\uFEFF';
-    const header = 'ID,English,Yoruba,Username,Mode,Category,Timestamp,Synced';
+    const header = 'ID,English,Yoruba,Username,Email,Location,Mode,Category,Timestamp,Synced';
     const rows = myContributions.map(c =>
-      [c.id, csvEscape(c.english), csvEscape(c.yoruba), csvEscape(c.username), c.mode, c.category || '', new Date(c.timestamp).toISOString(), c.synced].join(',')
+      [c.id, csvEscape(c.english), csvEscape(c.yoruba), csvEscape(c.username), csvEscape(c.email || ''), csvEscape(c.location || ''), c.mode, c.category || '', new Date(c.timestamp).toISOString(), c.synced].join(',')
     );
     const csv = BOM + header + '\n' + rows.join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });

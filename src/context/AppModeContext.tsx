@@ -17,10 +17,11 @@ interface AppModeContextType {
   // Firebase auth
   isLoggedIn: boolean;
   userEmail: string;
+  userLocation: string;
   authLoading: boolean;
   authError: string;
   setAuthError: (msg: string) => void;
-  register: (email: string, username: string, password: string) => Promise<boolean>;
+  register: (email: string, username: string, password: string, location: string) => Promise<boolean>;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
 }
@@ -102,6 +103,7 @@ export const AppModeProvider: React.FC<{ children: React.ReactNode }> = ({ child
       mode, setMode, username, setUsername, savedUsernames, addUsername, isDarkMode, setIsDarkMode, isPinMode, togglePinMode,
       isLoggedIn: authHook.isLoggedIn,
       userEmail: authHook.user?.email || '',
+      userLocation: authHook.location || '',
       authLoading: authHook.loading,
       authError: authHook.error,
       setAuthError: authHook.setError,

@@ -16,11 +16,12 @@ import { useHints } from './hooks/useHints';
 import { useLeaderboard } from './hooks/useLeaderboard';
 import { useWordSuggestions } from './hooks/useWordSuggestions';
 import { useAppUpdate } from './hooks/useAppUpdate';
+import { useHearts } from './hooks/useHearts';
 import Leaderboard from './components/Leaderboard';
 import PinModeView from './components/PinModeView';
 
 const AppContent: React.FC = () => {
-  const { mode, isDarkMode, username, userEmail, isLoggedIn, authLoading, authError, setAuthError, register, login, isPinMode } = useAppMode();
+  const { mode, isDarkMode, username, userEmail, userLocation, isLoggedIn, authLoading, authError, setAuthError, register, login, isPinMode } = useAppMode();
   const [showHelp, setShowHelp] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
@@ -32,6 +33,7 @@ const AppContent: React.FC = () => {
   const leaderboard = useLeaderboard(username || undefined);
   const wordSuggestions = useWordSuggestions();
   const update = useAppUpdate();
+  const hearts = useHearts(username || '__guest__');
 
   const handleSaveContribution = useCallback((yoruba: string, english: string) => {
     if (!username) return;
@@ -40,10 +42,13 @@ const AppContent: React.FC = () => {
       yoruba,
       username,
       email: userEmail,
+      location: userLocation,
       mode: 'freeform',
     });
     enqueue(item);
-  }, [username, userEmail, addContribution, enqueue]);
+    // Track toward heart refill (every 5 contributions = +1 heart)
+    hearts.onContributionSaved();
+  }, [username, userEmail, userLocation, addContribution, enqueue, hearts]);
 
   // Show loading screen while Firebase checks auth state
   if (authLoading) {
@@ -110,7 +115,14 @@ const AppContent: React.FC = () => {
         )}
 
         {mode === 'learn' && (
-          <TranslationChallenge />
+          <TranslationChallenge
+            hearts={hearts.hearts}
+            maxHearts={hearts.maxHearts}
+            msUntilRefill={hearts.msUntilRefill}
+            contribProgress={hearts.contribProgress}
+            contributionsNeeded={hearts.contributionsNeeded}
+            onUseHeart={hearts.useHeart}
+          />
         )}
 
         {mode === 'contribute' && (
@@ -161,7 +173,7 @@ const AppContent: React.FC = () => {
                 <section>
                   <h3 className="text-amber-500 font-black uppercase text-[10px] tracking-widest mb-2">Contribute Mode</h3>
                   <p className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>
-                    Your translations help train the ODU AI translator for the Yoruba-speaking Griot Avatar. Contributors will be credited in the <strong>Untangler</strong> exhibition. Write freely and save contributions.
+                    Your translations help train the ODU AI translator. Every <strong>5 contributions</strong> earns you an extra practice heart ♥. Contributors will be credited in the <strong>Untangler</strong> exhibition.
                   </p>
                 </section>
               )}
@@ -169,8 +181,8 @@ const AppContent: React.FC = () => {
                 <h3 className="text-slate-500 font-black uppercase text-[10px] tracking-widest mb-2">Privacy</h3>
                 <p className={isDarkMode ? 'text-slate-500' : 'text-slate-400'}>
                   {mode === 'contribute'
-                    ? 'In Contribute mode, your translations and username are stored locally and optionally synced to a Google Form for AI training. No other data is collected.'
-                    : 'This app runs 100% locally on your machine. No data is ever sent to the cloud.'}
+                    ? 'In Contribute mode, your translations, username, and location are stored locally and synced to Google Forms for AI training.'
+                    : 'This app runs locally on your machine. Auth data is stored securely via Firebase.'}
                 </p>
               </section>
             </div>

@@ -27,6 +27,7 @@ export interface Contribution {
   yoruba: string;
   username: string;
   email?: string;
+  location?: string;
   mode: 'freeform' | 'challenge';
   category?: string;
   timestamp: number;

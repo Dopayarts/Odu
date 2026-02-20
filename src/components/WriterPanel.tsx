@@ -298,6 +298,15 @@ const WriterPanel: React.FC<WriterPanelProps> = ({ onSaveContribution, wordSugge
       <div className="p-3 sm:p-4 md:p-6">
         {mode === 'contribute' && onSaveContribution ? (
           <div className="flex flex-col gap-2 sm:gap-3">
+            {/* Community guidelines reminder */}
+            <div className={`rounded-2xl px-4 py-3 border-2 ${isDarkMode ? 'bg-amber-900/20 border-amber-700/40' : 'bg-amber-50 border-amber-200'}`}>
+              <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
+                Contribute Responsibly
+              </p>
+              <p className={`text-xs leading-snug ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                Please submit <strong>factual, accurate Yoruba sentences</strong> only. Spamming or incorrect content violates our community guidelines and may result in a ban. Your contributions will be celebrated in our exhibition — make them count! ✊
+              </p>
+            </div>
             {/* English input */}
             <div className="relative">
               <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
