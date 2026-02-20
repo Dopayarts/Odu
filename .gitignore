@@ -32,3 +32,7 @@ dist-ssr
 
 # Electron build output
 release/
+
+# Capacitor native platforms
+ios/
+android/

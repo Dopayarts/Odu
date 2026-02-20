@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { AppModeProvider, useAppMode } from './context/AppModeContext';
+import platform from './utils/platform';
 import Header from './components/Header';
 import WriterPanel from './components/WriterPanel';
 import ModeSwitcher from './components/ModeSwitcher';
@@ -65,13 +66,13 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // Pin mode: compact floating keyboard
-  if (isPinMode) {
+  // Pin mode: compact floating keyboard (Electron only)
+  if (platform.isElectron && isPinMode) {
     return <PinModeView />;
   }
 
   return (
-    <div className={`min-h-screen flex flex-col items-center p-2 md:p-6 font-sans transition-colors duration-300 overflow-y-auto ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-200 text-slate-900'}`}>
+    <div className={`min-h-screen flex flex-col items-center p-2 md:p-6 font-sans transition-colors duration-300 overflow-y-auto ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-200 text-slate-900'}`} style={{ paddingTop: platform.isCapacitor ? 'env(safe-area-inset-top)' : undefined }}>
       <div className={`w-full max-w-4xl rounded-[2rem] shadow-2xl flex flex-col border-2 transition-all duration-500 ${
         isDarkMode ? 'border-slate-800 bg-slate-900' : 'border-white bg-slate-50'
       }`}>

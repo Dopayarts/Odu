@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { AppMode } from '../../types';
 import { useAuth } from '../hooks/useAuth';
+import platform from '../utils/platform';
 
 interface AppModeContextType {
   mode: AppMode;
@@ -52,6 +53,7 @@ export const AppModeProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isPinMode, setIsPinMode] = useState(false);
 
   const togglePinMode = useCallback(() => {
+    if (!platform.isElectron) return;
     const next = !isPinMode;
     setIsPinMode(next);
     const pin = (window as any).electronPin;

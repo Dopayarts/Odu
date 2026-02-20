@@ -1,6 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { KEYBOARD_LAYOUT, YORUBA_VOWELS } from '../constants';
+import platform from '../utils/platform';
 
 interface KeyboardProps {
   onInput: (char: string) => void;
@@ -16,7 +17,7 @@ interface KeyboardProps {
   diacriticIndex: number;
   onDiacriticSelect: (vowel: string, index: number) => void;
   isDarkMode: boolean;
-  compact?: boolean;
+  compact?: boolean | undefined;
 }
 
 // Frequency mapping for Do (C4), Re (D4), Mi (E4)
@@ -58,8 +59,9 @@ const Keyboard: React.FC<KeyboardProps> = ({
   diacriticIndex,
   onDiacriticSelect,
   isDarkMode,
-  compact = false
+  compact: compactProp,
 }) => {
+  const compact = compactProp ?? platform.isMobile;
 
   const effectiveShift = isShiftToggled || isShiftPressed;
 

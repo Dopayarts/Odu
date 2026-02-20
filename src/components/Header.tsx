@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAppMode } from '../context/AppModeContext';
 import type { UpdateStatus } from '../hooks/useAppUpdate';
+import platform from '../utils/platform';
 
 interface HeaderProps {
   toneModeActive: boolean;
@@ -26,13 +27,13 @@ const Header: React.FC<HeaderProps> = ({ toneModeActive, autoCopy, setAutoCopy, 
         <div className="min-w-0">
           <h1 className="text-xs sm:text-sm font-black tracking-tight leading-none truncate">ODÙ Yorùbá Writer</h1>
           <p className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-widest mt-1 truncate ${toneModeActive ? 'text-emerald-500' : 'text-slate-500'}`}>
-            {toneModeActive ? 'Scale Mode Active' : mode === 'contribute' && username ? `Contributor: ${username}` : mode === 'learn' ? 'Learning Mode' : 'Native Desktop App'}
+            {toneModeActive ? 'Scale Mode Active' : mode === 'contribute' && username ? `Contributor: ${username}` : mode === 'learn' ? 'Learning Mode' : platform.isCapacitor ? 'Mobile App' : 'Native Desktop App'}
           </p>
         </div>
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-        {updateStatus === 'available' && (
+        {platform.isElectron && updateStatus === 'available' && (
           <button
             onClick={() => setShowUpdateDialog(true)}
             className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-sm bg-amber-500 text-white animate-pulse hover:bg-amber-600 hover:animate-none"
@@ -40,7 +41,7 @@ const Header: React.FC<HeaderProps> = ({ toneModeActive, autoCopy, setAutoCopy, 
             Update
           </button>
         )}
-        {updateStatus === 'downloading' && (
+        {platform.isElectron && updateStatus === 'downloading' && (
           <button
             disabled
             className="px-3 py-2 rounded-xl text-[10px] font-black uppercase shadow-sm bg-blue-500 text-white cursor-wait"
@@ -48,7 +49,7 @@ const Header: React.FC<HeaderProps> = ({ toneModeActive, autoCopy, setAutoCopy, 
             {updateProgress}%
           </button>
         )}
-        {updateStatus === 'downloaded' && (
+        {platform.isElectron && updateStatus === 'downloaded' && (
           <button
             onClick={() => setShowUpdateDialog(true)}
             className="px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-sm bg-emerald-500 text-white animate-pulse hover:bg-emerald-600 hover:animate-none"
@@ -85,19 +86,21 @@ const Header: React.FC<HeaderProps> = ({ toneModeActive, autoCopy, setAutoCopy, 
             <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-transform ${autoCopy ? 'left-4.5' : 'left-0.5'}`} />
           </button>
         </div>
-        <button
-          onClick={togglePinMode}
-          title="Pin Mode — compact floating keyboard"
-          className={`p-2 rounded-xl transition-all ${isDarkMode ? 'bg-slate-700 text-slate-300 hover:text-emerald-400' : 'bg-white text-slate-600 hover:text-emerald-600 shadow-sm'}`}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>
-        </button>
+        {platform.isElectron && (
+          <button
+            onClick={togglePinMode}
+            title="Pin Mode — compact floating keyboard"
+            className={`p-2 rounded-xl transition-all ${isDarkMode ? 'bg-slate-700 text-slate-300 hover:text-emerald-400' : 'bg-white text-slate-600 hover:text-emerald-600 shadow-sm'}`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>
+          </button>
+        )}
         <button onClick={() => setIsDarkMode(!isDarkMode)} className={`p-2 rounded-xl transition-all active:rotate-45 ${isDarkMode ? 'bg-slate-700 text-amber-400' : 'bg-white text-emerald-600 shadow-sm'}`}>
           {isDarkMode ? '☀' : '🌙'}
         </button>
       </div>
 
-      {showUpdateDialog && (
+      {platform.isElectron && showUpdateDialog && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-300">
           <div className={`max-w-sm w-full rounded-2xl p-6 shadow-2xl border-2 ${isDarkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-100'}`}>
             <h3 className="text-lg font-black mb-2">

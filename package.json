@@ -14,7 +14,10 @@
     "preview": "vite preview",
     "electron": "electron .",
     "electron:dev": "vite build && electron .",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+    "build:mobile": "vite build && npx cap sync",
+    "android": "npx cap open android",
+    "ios": "npx cap open ios"
   },
   "build": {
     "appId": "com.yoruba.odu",
@@ -55,6 +58,13 @@
     "vite": "^5.3.4"
   },
   "dependencies": {
+    "@capacitor/android": "^8.1.0",
+    "@capacitor/app": "^8.0.1",
+    "@capacitor/cli": "^8.1.0",
+    "@capacitor/core": "^8.1.0",
+    "@capacitor/keyboard": "^8.0.0",
+    "@capacitor/splash-screen": "^8.0.1",
+    "@capacitor/status-bar": "^8.0.1",
     "@google/genai": "^1.41.0",
     "electron-log": "^5.4.3",
     "electron-updater": "^6.8.3",
