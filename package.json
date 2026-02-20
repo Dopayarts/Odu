@@ -1,6 +1,6 @@
 {
   "name": "odu-yoruba-writer",
-  "version": "1.3.1",
+  "version": "1.4.1",
   "type": "module",
   "description": "Professional Yoruba Diacritic Keyboard",
   "author": "Peace Toba Olatunji (Dopay)",
@@ -17,7 +17,8 @@
     "dist": "electron-builder",
     "build:mobile": "vite build && npx cap sync",
     "android": "npx cap open android",
-    "ios": "npx cap open ios"
+    "ios": "npx cap open ios",
+    "postinstall": "node -e \"const fs=require('fs');const f='node_modules/@capacitor/keyboard/android/build.gradle';if(fs.existsSync(f)){fs.writeFileSync(f,fs.readFileSync(f,'utf8').replace(/proguard-android\\.txt/g,'proguard-android-optimize.txt'))}\""
   },
   "build": {
     "appId": "com.yoruba.odu",
