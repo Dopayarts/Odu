@@ -26,6 +26,7 @@ export interface Contribution {
   english: string;
   yoruba: string;
   username: string;
+  email?: string;
   mode: 'freeform' | 'challenge';
   category?: string;
   timestamp: number;
@@ -35,6 +36,34 @@ export interface Contribution {
 export interface ChallengeSentence {
   id: string;
   english: string;
+  yoruba_answer?: string;
   category: 'greeting' | 'family' | 'food' | 'market' | 'travel' | 'proverb';
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+}
+
+export interface QuizScore {
+  date: string;
+  correct: number;
+  total: number;
+}
+
+export interface QuizHistory {
+  scores: QuizScore[];
+}
+
+export interface QuizAnswer {
+  english: string;
+  userAnswer: string;
+  correctAnswer: string;
+  isCorrect: boolean;
+  phase: 'translate' | 'fillgap';
+}
+
+export interface FillGapData {
+  english: string;
+  fullYoruba: string;
+  gappedWords: { index: number; word: string }[];
+  displayWords: (string | null)[];
+  options: string[];
   difficulty: 'beginner' | 'intermediate' | 'advanced';
 }

@@ -39,6 +39,7 @@ export function useGoogleFormsSync(markSynced: (ids: string[]) => void) {
         formData.append(GOOGLE_FORMS_CONFIG.fields.english, item.english);
         formData.append(GOOGLE_FORMS_CONFIG.fields.yoruba, item.yoruba);
         formData.append(GOOGLE_FORMS_CONFIG.fields.username, item.username);
+        if (item.email) formData.append(GOOGLE_FORMS_CONFIG.fields.email, item.email);
         formData.append(GOOGLE_FORMS_CONFIG.fields.mode, item.category ? `${item.mode}:${item.category}` : item.mode);
         formData.append(GOOGLE_FORMS_CONFIG.fields.timestamp, new Date(item.timestamp).toISOString());
 

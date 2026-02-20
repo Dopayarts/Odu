@@ -25,5 +25,10 @@ dist-ssr
 .vs/
 .claude/
 
+# Environment variables (Firebase keys etc.)
+.env
+.env.local
+.env.*.local
+
 # Electron build output
 release/

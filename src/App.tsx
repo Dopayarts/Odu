@@ -3,11 +3,12 @@ import { AppModeProvider, useAppMode } from './context/AppModeContext';
 import Header from './components/Header';
 import WriterPanel from './components/WriterPanel';
 import ModeSwitcher from './components/ModeSwitcher';
-import UsernamePrompt from './components/UsernamePrompt';
-import TabBar from './components/TabBar';
+import AuthScreen from './components/AuthScreen';
 import TranslationChallenge from './components/TranslationChallenge';
 import ContributionStats from './components/ContributionStats';
 import HintTooltip from './components/HintTooltip';
+import ModeHint from './components/ModeHint';
+import AdminPanel from './components/AdminPanel';
 import { useContributions } from './hooks/useContributions';
 import { useGoogleFormsSync } from './hooks/useGoogleFormsSync';
 import { useHints } from './hooks/useHints';
@@ -15,59 +16,59 @@ import { useLeaderboard } from './hooks/useLeaderboard';
 import { useWordSuggestions } from './hooks/useWordSuggestions';
 import { useAppUpdate } from './hooks/useAppUpdate';
 import Leaderboard from './components/Leaderboard';
+import PinModeView from './components/PinModeView';
 
 const AppContent: React.FC = () => {
-  const { mode, isDarkMode, username } = useAppMode();
+  const { mode, isDarkMode, username, userEmail, isLoggedIn, authLoading, authError, setAuthError, register, login, isPinMode } = useAppMode();
   const [showHelp, setShowHelp] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const [showUsernamePrompt, setShowUsernamePrompt] = useState(false);
-  const [activeTab, setActiveTab] = useState<'write' | 'practice'>('write');
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [autoCopy, setAutoCopy] = useState(true);
 
-  const { contributions, addContribution, markSynced, exportCSV, unsyncedCount } = useContributions();
+  const { contributions, addContribution, markSynced, exportCSV, unsyncedCount } = useContributions(username);
   const { enqueue, syncStatus, processQueue } = useGoogleFormsSync(markSynced);
   const { activeHint, dismissHint } = useHints(mode);
   const leaderboard = useLeaderboard(username || undefined);
   const wordSuggestions = useWordSuggestions();
   const update = useAppUpdate();
 
-  // When entering contribute mode, prompt for username if not set
-  const handleModeChange = useCallback(() => {
-    if (mode === 'contribute' && !username) {
-      setShowUsernamePrompt(true);
-    }
-  }, [mode, username]);
-
-  // Check for username when mode changes to contribute
-  React.useEffect(() => {
-    handleModeChange();
-  }, [handleModeChange]);
-
   const handleSaveContribution = useCallback((yoruba: string, english: string) => {
-    if (!username) {
-      setShowUsernamePrompt(true);
-      return;
-    }
+    if (!username) return;
     const item = addContribution({
       english,
       yoruba,
       username,
+      email: userEmail,
       mode: 'freeform',
     });
     enqueue(item);
-  }, [username, addContribution, enqueue]);
+  }, [username, userEmail, addContribution, enqueue]);
 
-  const handleChallengeSubmit = useCallback((english: string, yoruba: string, category: string) => {
-    const currentUsername = username || 'anonymous';
-    const item = addContribution({
-      english,
-      yoruba,
-      username: currentUsername,
-      mode: 'challenge',
-      category,
-    });
-    enqueue(item);
-  }, [username, addContribution, enqueue]);
+  // Show loading screen while Firebase checks auth state
+  if (authLoading) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center ${isDarkMode ? 'bg-slate-950' : 'bg-slate-200'}`}>
+        <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Show auth screen if not logged in
+  if (!isLoggedIn) {
+    return (
+      <AuthScreen
+        onRegister={register}
+        onLogin={login}
+        error={authError}
+        setError={setAuthError}
+      />
+    );
+  }
+
+  // Pin mode: compact floating keyboard
+  if (isPinMode) {
+    return <PinModeView />;
+  }
 
   return (
     <div className={`min-h-screen flex flex-col items-center p-2 md:p-6 font-sans transition-colors duration-300 overflow-y-auto ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-200 text-slate-900'}`}>
@@ -84,7 +85,8 @@ const AppContent: React.FC = () => {
           updateStatus={update.status}
           updateVersion={update.version}
           updateProgress={update.progress}
-          onUpdateClick={update.status === 'downloaded' ? update.installUpdate : update.downloadUpdate}
+          onDownloadUpdate={update.downloadUpdate}
+          onInstallUpdate={update.installUpdate}
         />
 
         {/* Contribution stats bar — contribute mode only */}
@@ -98,21 +100,24 @@ const AppContent: React.FC = () => {
           />
         )}
 
-        {/* Tab bar — learn and contribute modes */}
-        {mode !== 'simple' && (
-          <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
-        )}
-
         {/* Main content */}
-        {(mode === 'simple' || activeTab === 'write') && (
+        {mode === 'simple' && (
           <WriterPanel
-            onSaveContribution={mode === 'contribute' ? handleSaveContribution : undefined}
             wordSuggestions={wordSuggestions}
+            onAdminMode={() => setShowAdminPanel(true)}
           />
         )}
 
-        {mode !== 'simple' && activeTab === 'practice' && (
-          <TranslationChallenge onSubmit={handleChallengeSubmit} />
+        {mode === 'learn' && (
+          <TranslationChallenge />
+        )}
+
+        {mode === 'contribute' && (
+          <WriterPanel
+            onSaveContribution={handleSaveContribution}
+            wordSuggestions={wordSuggestions}
+            onAdminMode={() => setShowAdminPanel(true)}
+          />
         )}
 
         {/* Mode switcher at bottom */}
@@ -126,6 +131,9 @@ const AppContent: React.FC = () => {
           <ModeSwitcher glowTarget={activeHint?.target || null} />
         </div>
       </div>
+
+      {/* Mode hint toast */}
+      <ModeHint />
 
       {/* Help modal */}
       {showHelp && (
@@ -152,7 +160,7 @@ const AppContent: React.FC = () => {
                 <section>
                   <h3 className="text-amber-500 font-black uppercase text-[10px] tracking-widest mb-2">Contribute Mode</h3>
                   <p className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>
-                    Your translations help train the ODU AI translator for the Yoruba-speaking Griot Avatar. Contributors will be credited in the <strong>Untangler</strong> exhibition. Use the Practice tab to translate English sentences, or write freely and save contributions.
+                    Your translations help train the ODU AI translator for the Yoruba-speaking Griot Avatar. Contributors will be credited in the <strong>Untangler</strong> exhibition. Write freely and save contributions.
                   </p>
                 </section>
               )}
@@ -191,9 +199,9 @@ const AppContent: React.FC = () => {
         />
       )}
 
-      {/* Username prompt modal */}
-      {showUsernamePrompt && (
-        <UsernamePrompt onClose={() => setShowUsernamePrompt(false)} />
+      {/* Admin panel (hidden, activated by DopayMasterMode) */}
+      {showAdminPanel && (
+        <AdminPanel onClose={() => setShowAdminPanel(false)} />
       )}
     </div>
   );

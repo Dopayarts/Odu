@@ -13,7 +13,7 @@ function saveContributions(items: Contribution[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 }
 
-export function useContributions() {
+export function useContributions(currentUsername?: string) {
   const [contributions, setContributions] = useState<Contribution[]>(loadContributions);
 
   const addContribution = useCallback((entry: Omit<Contribution, 'id' | 'timestamp' | 'synced'>) => {
@@ -40,9 +40,14 @@ export function useContributions() {
   }, []);
 
   const exportCSV = useCallback(() => {
+    // Only export the current user's own contributions
+    const myContributions = currentUsername
+      ? contributions.filter(c => c.username === currentUsername)
+      : contributions;
+    if (myContributions.length === 0) return;
     const BOM = '\uFEFF';
     const header = 'ID,English,Yoruba,Username,Mode,Category,Timestamp,Synced';
-    const rows = contributions.map(c =>
+    const rows = myContributions.map(c =>
       [c.id, csvEscape(c.english), csvEscape(c.yoruba), csvEscape(c.username), c.mode, c.category || '', new Date(c.timestamp).toISOString(), c.synced].join(',')
     );
     const csv = BOM + header + '\n' + rows.join('\n');
@@ -50,12 +55,12 @@ export function useContributions() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `odu-contributions-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `odu-contributions-${currentUsername || 'all'}-${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  }, [contributions]);
+  }, [contributions, currentUsername]);
 
   const unsyncedCount = contributions.filter(c => !c.synced).length;
 

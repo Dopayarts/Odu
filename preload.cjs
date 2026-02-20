@@ -17,3 +17,11 @@ contextBridge.exposeInMainWorld('electronUpdater', {
   downloadUpdate: () => ipcRenderer.invoke('download-update'),
   installUpdate: () => ipcRenderer.invoke('install-update'),
 });
+
+contextBridge.exposeInMainWorld('electronPin', {
+  enterPinMode: () => ipcRenderer.invoke('enter-pin-mode'),
+  exitPinMode: () => ipcRenderer.invoke('exit-pin-mode'),
+  onGlobalDoubleShift: (callback) => {
+    ipcRenderer.on('global-double-shift', () => callback());
+  },
+});

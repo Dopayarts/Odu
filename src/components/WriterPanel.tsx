@@ -4,9 +4,20 @@ import { YORUBA_VOWELS } from '../constants';
 import { useAppMode } from '../context/AppModeContext';
 import type { WordSuggestionsReturn, WordEntry } from '../hooks/useWordSuggestions';
 
+// Map plain vowels to their diacritic forms for bracket shortcuts
+const VOWEL_GRAVE: Record<string, string> = {};
+const VOWEL_ACUTE: Record<string, string> = {};
+for (const [, val] of Object.entries(YORUBA_VOWELS)) {
+  VOWEL_GRAVE[val.base.toLowerCase()] = val.low.toLowerCase();
+  VOWEL_ACUTE[val.base.toLowerCase()] = val.high.toLowerCase();
+  VOWEL_GRAVE[val.base.toUpperCase()] = val.low.toUpperCase();
+  VOWEL_ACUTE[val.base.toUpperCase()] = val.high.toUpperCase();
+}
+
 interface WriterPanelProps {
   onSaveContribution?: (yoruba: string, english: string) => void;
   wordSuggestions?: WordSuggestionsReturn;
+  onAdminMode?: () => void;
 }
 
 function getWordAtCursor(text: string, cursorPos: number): { word: string; start: number; end: number } | null {
@@ -23,7 +34,7 @@ function getWordAtCursor(text: string, cursorPos: number): { word: string; start
   return { word, start, end };
 }
 
-const WriterPanel: React.FC<WriterPanelProps> = ({ onSaveContribution, wordSuggestions }) => {
+const WriterPanel: React.FC<WriterPanelProps> = ({ onSaveContribution, wordSuggestions, onAdminMode }) => {
   const { isDarkMode, mode } = useAppMode();
   const [editorText, setEditorText] = useState('');
   const [englishText, setEnglishText] = useState('');
@@ -68,6 +79,14 @@ const WriterPanel: React.FC<WriterPanelProps> = ({ onSaveContribution, wordSugge
   useEffect(() => {
     updateSuggestions();
   }, [updateSuggestions]);
+
+  // Detect admin passphrase
+  useEffect(() => {
+    if (editorText.includes('DopayMasterMode')) {
+      setEditorText('');
+      onAdminMode?.();
+    }
+  }, [editorText, onAdminMode]);
 
   const acceptSuggestion = useCallback((entry: WordEntry) => {
     if (!cursorWord || !editorRef.current) return;
@@ -190,6 +209,29 @@ const WriterPanel: React.FC<WriterPanelProps> = ({ onSaveContribution, wordSugge
         if (['1', '2', '3'].includes(e.key)) { e.preventDefault(); confirmDiacritic(activeVowel, parseInt(e.key) - 1); return; }
       }
 
+      // Bracket shortcuts: [ for grave (low), ] for acute (high)
+      if ((e.key === '[' || e.key === ']') && document.activeElement === editorRef.current) {
+        const pos = editorRef.current?.selectionStart || 0;
+        if (pos > 0) {
+          const lastChar = editorText[pos - 1];
+          const map = e.key === '[' ? VOWEL_GRAVE : VOWEL_ACUTE;
+          const replacement = map[lastChar];
+          if (replacement) {
+            e.preventDefault();
+            const newText = editorText.substring(0, pos - 1) + replacement + editorText.substring(pos);
+            setEditorText(newText);
+            if (autoCopy) navigator.clipboard.writeText(newText).catch(() => {});
+            setTimeout(() => {
+              if (editorRef.current) {
+                const newPos = pos - 1 + replacement.length;
+                editorRef.current.selectionStart = editorRef.current.selectionEnd = newPos;
+              }
+            }, 0);
+            return;
+          }
+        }
+      }
+
       if (document.activeElement === editorRef.current || !activeVowel) {
         const key = e.key.toLowerCase();
         if (YORUBA_VOWELS[key] && toneModeActive) {
@@ -210,7 +252,7 @@ const WriterPanel: React.FC<WriterPanelProps> = ({ onSaveContribution, wordSugge
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [activeVowel, diacriticIndex, confirmDiacritic, toneModeActive, activeSuggestions, selectedSuggestionIndex, acceptSuggestion]);
+  }, [activeVowel, diacriticIndex, confirmDiacritic, toneModeActive, activeSuggestions, selectedSuggestionIndex, acceptSuggestion, editorText, autoCopy]);
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(editorText);
