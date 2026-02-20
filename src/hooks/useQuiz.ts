@@ -5,6 +5,7 @@ import { playCorrectSound, playWrongSound } from '../utils/sounds';
 const HISTORY_KEY = 'odu-quiz-history';
 const QUESTIONS_PER_PHASE = 5;
 const TOTAL_QUESTIONS = 10;
+
 function getTimerSeconds(difficulty?: 'beginner' | 'intermediate' | 'advanced'): number {
   switch (difficulty) {
     case 'intermediate': return 40;
@@ -58,7 +59,6 @@ function pickByDifficulty(questions: ChallengeSentence[], seed: string): Challen
   picked.push(...intermediates.slice(0, 2));
   picked.push(...advanced.slice(0, 1));
 
-  // If not enough in a category, fill from others
   if (picked.length < QUESTIONS_PER_PHASE) {
     const usedIds = new Set(picked.map(q => q.id));
     const remaining = seededShuffle(questions.filter(q => !usedIds.has(q.id)), seed + '-r');
@@ -79,7 +79,6 @@ function generateFillGapData(
   const gapCount = question.difficulty === 'beginner' ? 1
     : question.difficulty === 'intermediate' ? 2 : 3;
 
-  // Pick random word indices to blank out
   const indices = seededShuffle(
     words.map((_, i) => i),
     seed + question.id
@@ -87,10 +86,8 @@ function generateFillGapData(
   indices.sort((a, b) => a - b);
 
   const gappedWords = indices.map(i => ({ index: i, word: words[i] }));
-
   const displayWords = words.map((w, i) => indices.includes(i) ? null : w);
 
-  // Generate distractors from other sentences
   const otherWords = allQuestions
     .filter(q => q.id !== question.id && q.yoruba_answer)
     .flatMap(q => (q.yoruba_answer || '').split(/\s+/).filter(Boolean));
@@ -113,13 +110,13 @@ function generateFillGapData(
   };
 }
 
-export function useQuiz(questions: ChallengeSentence[]) {
+// alternates: questionId → list of approved alternate answers
+export function useQuiz(questions: ChallengeSentence[], alternates: Record<string, string[]> = {}) {
   const today = getTodayKey();
   const [history, setHistory] = useState<QuizScore[]>(loadHistory);
 
   const isDailyDone = useMemo(() => history.some(s => s.date === today), [history, today]);
 
-  // Pick questions: 5 for translate, 5 for fill-gap (different sets)
   const { translateQuestions, fillgapQuestions, fillGapDataList } = useMemo(() => {
     if (questions.length === 0) return { translateQuestions: [], fillgapQuestions: [], fillGapDataList: [] };
 
@@ -154,7 +151,6 @@ export function useQuiz(questions: ChallengeSentence[]) {
   const currentFillGap = phase === 'fillgap' ? fillGapDataList[questionIndex - QUESTIONS_PER_PHASE] || null : null;
   const totalQuestions = TOTAL_QUESTIONS;
 
-  // Timer logic
   const stopTimer = useCallback(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -168,16 +164,10 @@ export function useQuiz(questions: ChallengeSentence[]) {
     setTimerDuration(duration);
     setTimeLeft(duration);
     timerRef.current = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          return 0;
-        }
-        return prev - 1;
-      });
+      setTimeLeft(prev => prev <= 1 ? 0 : prev - 1);
     }, 1000);
   }, [stopTimer, currentQuestion?.difficulty]);
 
-  // Start timer on new question (only after user has started)
   useEffect(() => {
     if (started && !answered && currentQuestion && !isComplete && !isDailyDone) {
       startTimer();
@@ -185,23 +175,20 @@ export function useQuiz(questions: ChallengeSentence[]) {
     return () => stopTimer();
   }, [started, questionIndex, answered, currentQuestion, isComplete, isDailyDone, startTimer, stopTimer]);
 
-  const startQuiz = useCallback(() => {
-    setStarted(true);
-  }, []);
+  const startQuiz = useCallback(() => { setStarted(true); }, []);
 
-  // Handle timeout
   const timeoutHandledRef = useRef(false);
   useEffect(() => {
     if (timeLeft === 0 && !answered && !timeoutHandledRef.current) {
       timeoutHandledRef.current = true;
       stopTimer();
-      // Auto-submit as wrong
       if (currentQuestion?.yoruba_answer) {
         playWrongSound();
         const correctAnswer = currentQuestion.yoruba_answer;
         setLastResult({ isCorrect: false, correctAnswer });
         setAnswered(true);
         setAnswers(prev => [...prev, {
+          questionId: currentQuestion.id,
           english: currentQuestion.english,
           userAnswer: '(time ran out)',
           correctAnswer,
@@ -212,15 +199,17 @@ export function useQuiz(questions: ChallengeSentence[]) {
     }
   }, [timeLeft, answered, currentQuestion, phase, stopTimer]);
 
-  // Reset timeout flag when question changes
-  useEffect(() => {
-    timeoutHandledRef.current = false;
-  }, [questionIndex]);
+  useEffect(() => { timeoutHandledRef.current = false; }, [questionIndex]);
 
   const checkAnswer = useCallback((userAnswer: string): boolean => {
     if (!currentQuestion?.yoruba_answer) return false;
     stopTimer();
-    const isCorrect = normalize(userAnswer) === normalize(currentQuestion.yoruba_answer);
+    const normUser = normalize(userAnswer);
+    const normCorrect = normalize(currentQuestion.yoruba_answer);
+    // Check main answer OR any approved alternate answers
+    const approvedAlts = alternates[currentQuestion.id] || [];
+    const isCorrect = normUser === normCorrect || approvedAlts.some(a => normalize(a) === normUser);
+
     if (isCorrect) {
       setCorrect(prev => prev + 1);
       playCorrectSound();
@@ -230,6 +219,7 @@ export function useQuiz(questions: ChallengeSentence[]) {
     setLastResult({ isCorrect, correctAnswer: currentQuestion.yoruba_answer });
     setAnswered(true);
     setAnswers(prev => [...prev, {
+      questionId: currentQuestion.id,
       english: currentQuestion.english,
       userAnswer,
       correctAnswer: currentQuestion.yoruba_answer!,
@@ -237,7 +227,7 @@ export function useQuiz(questions: ChallengeSentence[]) {
       phase,
     }]);
     return isCorrect;
-  }, [currentQuestion, phase, stopTimer]);
+  }, [currentQuestion, phase, stopTimer, alternates]);
 
   const checkFillGapAnswer = useCallback((filledWords: string[]): boolean => {
     if (!currentFillGap || !currentQuestion?.yoruba_answer) return false;
@@ -258,6 +248,7 @@ export function useQuiz(questions: ChallengeSentence[]) {
     setLastResult({ isCorrect, correctAnswer });
     setAnswered(true);
     setAnswers(prev => [...prev, {
+      questionId: currentQuestion.id,
       english: currentQuestion.english,
       userAnswer,
       correctAnswer,
@@ -296,25 +287,10 @@ export function useQuiz(questions: ChallengeSentence[]) {
   }, []);
 
   return {
-    started,
-    startQuiz,
-    currentQuestion,
-    questionIndex,
+    started, startQuiz, currentQuestion, questionIndex,
     totalQuestions: Math.min(totalQuestions, dailyQuestions.length),
-    correct,
-    answered,
-    lastResult,
-    isComplete,
-    isDailyDone,
-    history,
-    answers,
-    timeLeft,
-    timerDuration,
-    phase,
-    currentFillGap,
-    checkAnswer,
-    checkFillGapAnswer,
-    nextQuestion,
-    resetForNewDay,
+    correct, answered, lastResult, isComplete, isDailyDone, history, answers,
+    timeLeft, timerDuration, phase, currentFillGap,
+    checkAnswer, checkFillGapAnswer, nextQuestion, resetForNewDay,
   };
 }

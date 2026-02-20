@@ -17,6 +17,7 @@ import { useLeaderboard } from './hooks/useLeaderboard';
 import { useWordSuggestions } from './hooks/useWordSuggestions';
 import { useAppUpdate } from './hooks/useAppUpdate';
 import { useHearts } from './hooks/useHearts';
+import { useAlternateAnswers } from './hooks/useAlternateAnswers';
 import Leaderboard from './components/Leaderboard';
 import PinModeView from './components/PinModeView';
 
@@ -34,6 +35,7 @@ const AppContent: React.FC = () => {
   const wordSuggestions = useWordSuggestions();
   const update = useAppUpdate();
   const hearts = useHearts(username || '__guest__');
+  const alternates = useAlternateAnswers();
 
   const handleSaveContribution = useCallback((yoruba: string, english: string) => {
     if (!username) return;
@@ -122,6 +124,8 @@ const AppContent: React.FC = () => {
             contribProgress={hearts.contribProgress}
             contributionsNeeded={hearts.contributionsNeeded}
             onUseHeart={hearts.useHeart}
+            alternates={alternates}
+            username={username}
           />
         )}
 

@@ -3,6 +3,8 @@ import { useAppMode } from '../context/AppModeContext';
 import { GOOGLE_QUIZ_FORMS_CONFIG, GOOGLE_SHEET_EDIT_URL, GOOGLE_QUIZ_SHEET_EDIT_URL } from '../constants';
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useAdminFlags } from '../hooks/useFlags';
+import { QuizFlag } from '../../types';
 
 interface AdminPanelProps {
   onClose: () => void;
@@ -22,11 +24,12 @@ interface UserRecord {
 const CATEGORIES = ['greeting', 'family', 'food', 'market', 'travel', 'proverb'];
 const DIFFICULTIES = ['beginner', 'intermediate', 'advanced'];
 
-type Tab = 'quiz' | 'users';
+type Tab = 'flags' | 'users' | 'quiz';
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const { isDarkMode } = useAppMode();
-  const [activeTab, setActiveTab] = useState<Tab>('users');
+  const [activeTab, setActiveTab] = useState<Tab>('flags');
+  const { flags, loading: flagsLoading, fetchFlags, approveFlag, rejectFlag } = useAdminFlags();
 
   // ── Quiz tab state ────────────────────────────────────────────────────────────
   const [english, setEnglish] = useState('');
@@ -72,7 +75,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
   useEffect(() => {
     if (activeTab === 'users') fetchUsers();
-  }, [activeTab, fetchUsers]);
+    if (activeTab === 'flags') fetchFlags();
+  }, [activeTab, fetchUsers, fetchFlags]);
 
   const setUserStatus = async (uid: string, updates: Partial<UserRecord>) => {
     setActionStatus(prev => ({ ...prev, [uid]: 'pending' }));
@@ -149,23 +153,131 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
         {/* Tabs */}
         <div className={`flex border-b mx-6 flex-shrink-0 ${isDarkMode ? 'border-slate-700' : 'border-slate-200'}`}>
-          {(['users', 'quiz'] as Tab[]).map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2.5 text-xs font-black uppercase tracking-widest transition-colors capitalize ${
-                activeTab === tab
-                  ? isDarkMode ? 'text-emerald-400 border-b-2 border-emerald-400' : 'text-emerald-600 border-b-2 border-emerald-600'
-                  : isDarkMode ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'
-              }`}
-            >
-              {tab === 'users' ? `Users (${users.length})` : 'Quiz Manager'}
-            </button>
-          ))}
+          {(['flags', 'users', 'quiz'] as Tab[]).map(tab => {
+            const pendingCount = tab === 'flags' ? flags.filter(f => f.status === 'pending').length : 0;
+            const label = tab === 'flags'
+              ? `🚩 Flags${pendingCount > 0 ? ` (${pendingCount})` : ''}`
+              : tab === 'users' ? `Users (${users.length})` : 'Quiz';
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-3 sm:px-4 py-2.5 text-xs font-black uppercase tracking-widest transition-colors ${
+                  activeTab === tab
+                    ? isDarkMode ? 'text-emerald-400 border-b-2 border-emerald-400' : 'text-emerald-600 border-b-2 border-emerald-600'
+                    : isDarkMode ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
+
+          {/* ── FLAGS TAB ─────────────────────────────────────────────────── */}
+          {activeTab === 'flags' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Users flag answers they believe are valid alternate translations. Approve to accept for all users, or reject to dismiss.
+                </p>
+                <button onClick={fetchFlags} className={`ml-3 flex-shrink-0 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${isDarkMode ? 'border-slate-600 text-slate-300' : 'border-slate-200 text-slate-600'}`}>
+                  ↻
+                </button>
+              </div>
+
+              {/* Filter tabs */}
+              {['pending', 'approved', 'rejected'].map(status => {
+                const count = flags.filter(f => f.status === status).length;
+                return count > 0 ? null : null; // just show all for now
+              })}
+
+              {flagsLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : flags.length === 0 ? (
+                <div className={`rounded-2xl p-8 text-center ${isDarkMode ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
+                  <p className="text-2xl mb-2">🚩</p>
+                  <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>No flags yet. When users flag alternate answers they'll appear here.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* Group: pending first */}
+                  {(['pending', 'approved', 'rejected'] as QuizFlag['status'][]).map(status => {
+                    const group = flags.filter(f => f.status === status);
+                    if (group.length === 0) return null;
+                    return (
+                      <div key={status}>
+                        <p className={`text-[10px] font-black uppercase tracking-widest mb-2 ${
+                          status === 'pending' ? isDarkMode ? 'text-amber-400' : 'text-amber-600'
+                          : status === 'approved' ? isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
+                          : isDarkMode ? 'text-slate-500' : 'text-slate-400'
+                        }`}>
+                          {status} ({group.length})
+                        </p>
+                        {group.map(flag => (
+                          <div key={flag.id} className={`rounded-2xl border-2 p-4 mb-2 ${
+                            flag.status === 'pending'
+                              ? isDarkMode ? 'border-amber-700/40 bg-amber-900/10' : 'border-amber-200 bg-amber-50'
+                              : flag.status === 'approved'
+                                ? isDarkMode ? 'border-emerald-700/40 bg-emerald-900/10' : 'border-emerald-200 bg-emerald-50'
+                                : isDarkMode ? 'border-slate-700 bg-slate-800/30' : 'border-slate-200 bg-slate-50'
+                          }`}>
+                            {/* Question */}
+                            <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                              {flag.phase === 'translate' ? 'Translation' : 'Fill the Gap'} · {flag.english}
+                            </p>
+                            <div className="space-y-1 mb-3">
+                              <p className={`text-xs ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
+                                <span className="font-bold">Current answer:</span> {flag.correctAnswer}
+                              </p>
+                              <p className={`text-xs font-bold ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>
+                                <span className="font-bold">User's answer:</span> {flag.userAnswer}
+                              </p>
+                              <p className={`text-[10px] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                                by <strong>{flag.username}</strong> · {new Date(flag.timestamp).toLocaleDateString()}
+                              </p>
+                            </div>
+
+                            {flag.status === 'pending' && (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => approveFlag(flag)}
+                                  className="flex-1 py-2 bg-emerald-600 text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-emerald-500 active:scale-95 transition-all"
+                                >
+                                  ✓ Approve — Add as Alternate
+                                </button>
+                                <button
+                                  onClick={() => flag.id && rejectFlag(flag.id)}
+                                  className={`flex-1 py-2 rounded-xl text-xs font-black uppercase tracking-wider active:scale-95 transition-all ${isDarkMode ? 'bg-slate-700 text-slate-300 hover:bg-red-900/50 hover:text-red-300' : 'bg-slate-100 text-slate-600 hover:bg-red-100 hover:text-red-700'}`}
+                                >
+                                  ✕ Reject
+                                </button>
+                              </div>
+                            )}
+                            {flag.status === 'approved' && (
+                              <p className={`text-xs font-black uppercase ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                ✓ Approved — now accepted for all users
+                              </p>
+                            )}
+                            {flag.status === 'rejected' && (
+                              <p className={`text-xs font-black uppercase ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                                Rejected
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ── USERS TAB ─────────────────────────────────────────────────── */}
           {activeTab === 'users' && (

@@ -4,6 +4,7 @@ import { YORUBA_VOWELS } from '../constants';
 import { useAppMode } from '../context/AppModeContext';
 import { useQuizData } from '../hooks/useQuizData';
 import { useQuiz } from '../hooks/useQuiz';
+import { useSubmitFlag } from '../hooks/useFlags';
 import { QuizAnswer } from '../../types';
 
 // ─── Hearts display ──────────────────────────────────────────────────────────
@@ -302,12 +303,19 @@ const AnswerReview: React.FC<{
   total: number;
   isDarkMode: boolean;
   onContribute: () => void;
-}> = ({ answers, correct, total, isDarkMode, onContribute }) => {
+  username: string;
+}> = ({ answers, correct, total, isDarkMode, onContribute, username }) => {
   const percentage = Math.round((correct / total) * 100);
   const emoji = percentage === 100 ? '\u{1F3C6}' : percentage >= 60 ? '\u{1F389}' : '\u{1F4AA}';
+  const { submitFlag, submitting, submitted } = useSubmitFlag(username);
+  const [showFlagInfo, setShowFlagInfo] = useState(false);
 
   const translateAnswers = answers.filter(a => a.phase === 'translate');
   const fillgapAnswers = answers.filter(a => a.phase === 'fillgap');
+
+  // Only show flag on wrong answers that have a real user answer (not timed-out)
+  const canFlag = (a: QuizAnswer) =>
+    !a.isCorrect && a.userAnswer !== '(time ran out)' && a.userAnswer !== '(no answer)' && !!a.questionId;
 
   const renderSection = (title: string, items: QuizAnswer[]) => {
     if (items.length === 0) return null;
@@ -337,7 +345,7 @@ const AnswerReview: React.FC<{
                         Your answer: <span className="font-semibold">{a.userAnswer}</span>
                       </p>
                       <p className={`text-xs ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                        Correct: <span className="font-semibold">{a.correctAnswer}</span>
+                        Accepted: <span className="font-semibold">{a.correctAnswer}</span>
                       </p>
                     </>
                   )}
@@ -347,9 +355,38 @@ const AnswerReview: React.FC<{
                     </p>
                   )}
                 </div>
-                <span className={`text-lg flex-shrink-0 ${a.isCorrect ? 'text-emerald-500' : 'text-red-500'}`}>
-                  {a.isCorrect ? '\u2713' : '\u2717'}
-                </span>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* Flag button — only for flaggable wrong answers */}
+                  {canFlag(a) && (
+                    submitted[a.questionId!] ? (
+                      <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-lg ${isDarkMode ? 'bg-amber-800/40 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>
+                        Flagged ✓
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => submitFlag({
+                          questionId: a.questionId!,
+                          english: a.english,
+                          userAnswer: a.userAnswer,
+                          correctAnswer: a.correctAnswer,
+                          phase: a.phase,
+                        })}
+                        disabled={submitting[a.questionId!]}
+                        title="Flag this answer as a possible alternate translation"
+                        className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 ${
+                          isDarkMode
+                            ? 'bg-slate-700 text-slate-300 hover:bg-amber-800/50 hover:text-amber-300'
+                            : 'bg-slate-100 text-slate-500 hover:bg-amber-100 hover:text-amber-700'
+                        }`}
+                      >
+                        🚩 {submitting[a.questionId!] ? '…' : 'Flag'}
+                      </button>
+                    )
+                  )}
+                  <span className={`text-lg ${a.isCorrect ? 'text-emerald-500' : 'text-red-500'}`}>
+                    {a.isCorrect ? '\u2713' : '\u2717'}
+                  </span>
+                </div>
               </div>
             </div>
           ))}
@@ -360,6 +397,7 @@ const AnswerReview: React.FC<{
 
   return (
     <div className="flex flex-col gap-4 px-4 sm:px-6 py-8">
+      {/* Score summary */}
       <div className={`rounded-2xl p-6 sm:p-8 border-2 text-center ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-emerald-50 border-emerald-200'}`}>
         <div className="text-5xl mb-4">{emoji}</div>
         <p className={`text-3xl font-black mb-2 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
@@ -370,7 +408,26 @@ const AnswerReview: React.FC<{
         </p>
       </div>
 
-      <div className={`rounded-2xl p-4 border-2 max-h-80 overflow-y-auto ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`}>
+      {/* Flag explanation banner */}
+      <div className={`rounded-2xl border-2 overflow-hidden ${isDarkMode ? 'bg-amber-900/20 border-amber-700/40' : 'bg-amber-50 border-amber-200'}`}>
+        <button
+          onClick={() => setShowFlagInfo(!showFlagInfo)}
+          className={`w-full flex items-center justify-between px-4 py-3 text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-amber-400' : 'text-amber-700'}`}
+        >
+          <span>🚩 What does Flag mean?</span>
+          <span className={`transition-transform ${showFlagInfo ? 'rotate-180' : ''}`}>▾</span>
+        </button>
+        {showFlagInfo && (
+          <div className={`px-4 pb-4 text-xs leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+            Yoruba can have <strong>more than one correct translation</strong> for a sentence. If you answered a question and believe your translation is also valid — even though it was marked wrong — tap the <strong>🚩 Flag</strong> button next to that answer.
+            <br /><br />
+            Your flagged answer is sent to the admin for review. If approved, it is added as an <strong>accepted alternate answer</strong> for all users automatically — so no one else gets marked wrong for the same correct translation.
+          </div>
+        )}
+      </div>
+
+      {/* Answer list */}
+      <div className={`rounded-2xl p-4 border-2 max-h-96 overflow-y-auto ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`}>
         <h3 className={`text-[10px] font-black uppercase tracking-widest mb-3 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
           Answer Review
         </h3>
@@ -401,6 +458,8 @@ interface TranslationChallengeProps {
   contribProgress: number;
   contributionsNeeded: number;
   onUseHeart: () => void;
+  alternates: Record<string, string[]>;
+  username: string;
 }
 
 const TranslationChallenge: React.FC<TranslationChallengeProps> = ({
@@ -410,10 +469,12 @@ const TranslationChallenge: React.FC<TranslationChallengeProps> = ({
   contribProgress,
   contributionsNeeded,
   onUseHeart,
+  alternates,
+  username,
 }) => {
   const { isDarkMode, setMode } = useAppMode();
   const { questions } = useQuizData();
-  const quiz = useQuiz(questions);
+  const quiz = useQuiz(questions, alternates);
 
   const [yorubaText, setYorubaText] = useState('');
   const [isShiftToggled, setIsShiftToggled] = useState(false);
@@ -585,6 +646,7 @@ const TranslationChallenge: React.FC<TranslationChallengeProps> = ({
         total={quiz.totalQuestions}
         isDarkMode={isDarkMode}
         onContribute={() => setMode('contribute')}
+        username={username}
       />
     );
   }

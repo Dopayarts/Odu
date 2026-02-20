@@ -53,11 +53,24 @@ export interface QuizHistory {
 }
 
 export interface QuizAnswer {
+  questionId?: string;
   english: string;
   userAnswer: string;
   correctAnswer: string;
   isCorrect: boolean;
   phase: 'translate' | 'fillgap';
+}
+
+export interface QuizFlag {
+  id?: string;
+  questionId: string;
+  english: string;
+  userAnswer: string;       // the answer the user gave (claimed alternate)
+  correctAnswer: string;    // the system's current correct answer
+  phase: 'translate' | 'fillgap';
+  username: string;
+  timestamp: number;
+  status: 'pending' | 'approved' | 'rejected';
 }
 
 export interface FillGapData {
