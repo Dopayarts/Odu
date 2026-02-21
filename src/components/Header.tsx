@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppMode } from '../context/AppModeContext';
 import type { UpdateStatus } from '../hooks/useAppUpdate';
 import platform from '../utils/platform';
@@ -19,6 +19,13 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ toneModeActive, autoCopy, setAutoCopy, onShowHelp, onShowLeaderboard, updateStatus, updateVersion, updateProgress, onDownloadUpdate, onInstallUpdate }) => {
   const { mode, isDarkMode, setIsDarkMode, username, togglePinMode } = useAppMode();
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
+
+  // Auto-open install dialog when download completes
+  useEffect(() => {
+    if (updateStatus === 'downloaded') {
+      setShowUpdateDialog(true);
+    }
+  }, [updateStatus]);
 
   return (
     <header className={`px-4 sm:px-6 py-3 sm:py-4 flex flex-wrap items-center justify-between gap-2 border-b ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-100'}`}>
