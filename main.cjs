@@ -192,7 +192,8 @@ ipcMain.handle('download-update', () => {
 });
 
 ipcMain.handle('install-update', () => {
-  autoUpdater.quitAndInstall();
+  // isSilent=true: no NSIS progress dialog; isForceRunAfter=true: relaunch after install
+  autoUpdater.quitAndInstall(true, true);
 });
 
 ipcMain.handle('enter-pin-mode', () => {
