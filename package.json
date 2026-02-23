@@ -1,6 +1,6 @@
 {
   "name": "odu-yoruba-writer",
-  "version": "1.4.5",
+  "version": "1.4.6",
   "type": "module",
   "description": "Professional Yoruba Diacritic Keyboard",
   "author": "Peace Toba Olatunji (Dopay)",
@@ -37,8 +37,7 @@
     "win": {
       "target": "nsis",
       "icon": "icon.ico",
-      "legalTrademarks": "ODU Yoruba Writer is a trademark of Peace Toba Olatunji (Dopay)",
-      "publisherName": "Peace Toba Olatunji (Dopay)"
+      "legalTrademarks": "ODU Yoruba Writer is a trademark of Peace Toba Olatunji (Dopay)"
     },
     "directories": {
       "output": "release"

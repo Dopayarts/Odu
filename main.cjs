@@ -10,6 +10,7 @@ const { uIOhook, UiohookKey } = require('uiohook-napi');
 
 autoUpdater.logger = log;
 autoUpdater.logger.transports.file.level = 'info';
+autoUpdater.verifyUpdateCodeSignature = false; // app is not code-signed
 
 let win = null;
 let savedBounds = null;
