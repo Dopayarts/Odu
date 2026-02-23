@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAppMode } from '../context/AppModeContext';
 import { LeaderboardEntry } from '../hooks/useLeaderboard';
+import ContributorMap from './ContributorMap';
 
 interface LeaderboardProps {
   rankings: LeaderboardEntry[];
@@ -40,6 +41,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({
   onClose,
 }) => {
   const { isDarkMode } = useAppMode();
+  const [activeTab, setActiveTab] = useState<'rankings' | 'map'>('rankings');
   const maxCount = rankings.length > 0 ? rankings[0].count : 1;
 
   return (
@@ -66,9 +68,49 @@ const Leaderboard: React.FC<LeaderboardProps> = ({
               <span className="text-emerald-400 font-black text-lg">#{myRank} <span className="text-xs font-bold opacity-70">({myCount} translations)</span></span>
             </div>
           )}
+
+          {/* Tab switcher */}
+          <div className={`mt-4 flex rounded-2xl p-1 gap-1 ${isDarkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
+            <button
+              onClick={() => setActiveTab('rankings')}
+              className={`flex-1 py-2 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${
+                activeTab === 'rankings'
+                  ? isDarkMode
+                    ? 'bg-slate-700 text-amber-400 shadow-sm'
+                    : 'bg-white text-amber-600 shadow-sm'
+                  : isDarkMode
+                  ? 'text-slate-500 hover:text-slate-300'
+                  : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              🏆 Rankings
+            </button>
+            <button
+              onClick={() => setActiveTab('map')}
+              className={`flex-1 py-2 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${
+                activeTab === 'map'
+                  ? isDarkMode
+                    ? 'bg-slate-700 text-emerald-400 shadow-sm'
+                    : 'bg-white text-emerald-600 shadow-sm'
+                  : isDarkMode
+                  ? 'text-slate-500 hover:text-slate-300'
+                  : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              🌍 Map
+            </button>
+          </div>
         </div>
 
+        {/* Map view */}
+        {activeTab === 'map' && (
+          <div className="flex-1 overflow-y-auto px-4 pb-4">
+            <ContributorMap rankings={rankings} />
+          </div>
+        )}
+
         {/* Rankings list */}
+        {activeTab === 'rankings' && (
         <div className="flex-1 overflow-y-auto px-8 pb-2">
           {loading && rankings.length === 0 && (
             <div className="flex items-center justify-center py-12">
@@ -136,6 +178,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({
             );
           })}
         </div>
+        )}
 
         {/* Footer */}
         <div className="p-8 pt-4 space-y-3">

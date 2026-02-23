@@ -8,6 +8,7 @@ export interface LeaderboardEntry {
   username: string;
   count: number;
   rank: number;
+  location?: string;
 }
 
 interface LeaderboardData {
@@ -51,18 +52,22 @@ function parseCSV(text: string): LeaderboardData {
     return { rankings: [], totalContributions: 0, lastUpdated: Date.now() };
   }
 
-  // Parse header to find username column
+  // Parse header to find username and location columns
   const header = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
   const usernameIdx = header.findIndex(h =>
     h.includes('username') || h.includes('user') || h.includes('name')
+  );
+  const locationIdx = header.findIndex(h =>
+    h.includes('location') || h.includes('city') || h.includes('country')
   );
 
   if (usernameIdx === -1) {
     return { rankings: [], totalContributions: 0, lastUpdated: Date.now() };
   }
 
-  // Count contributions per username
+  // Count contributions per username and collect first location per user
   const counts: Record<string, number> = {};
+  const locations: Record<string, string> = {};
   let total = 0;
 
   for (let i = 1; i < lines.length; i++) {
@@ -74,6 +79,13 @@ function parseCSV(text: string): LeaderboardData {
     if (!username || username === 'anonymous') continue;
 
     counts[username] = (counts[username] || 0) + 1;
+
+    // Collect first non-empty location for this user
+    if (locationIdx !== -1 && !locations[username] && row[locationIdx]) {
+      const loc = row[locationIdx].trim().replace(/^"|"$/g, '');
+      if (loc) locations[username] = loc;
+    }
+
     total++;
   }
 
@@ -84,6 +96,7 @@ function parseCSV(text: string): LeaderboardData {
       username,
       count,
       rank: i + 1,
+      location: locations[username] || '',
     }));
 
   return { rankings: sorted, totalContributions: total, lastUpdated: Date.now() };
