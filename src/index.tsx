@@ -6,18 +6,14 @@ import { Capacitor } from '@capacitor/core';
 
 // Capacitor mobile plugin init (dynamic imports so Electron bundle unaffected)
 if (Capacitor.isNativePlatform()) {
-  import('@capacitor/splash-screen').then(({ SplashScreen }) => {
-    SplashScreen.hide();
-  });
-
   import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
     StatusBar.setStyle({ style: Style.Dark });
     StatusBar.setBackgroundColor({ color: '#059669' });
-  });
+  }).catch(() => {});
 
   import('@capacitor/keyboard').then(({ Keyboard }) => {
     Keyboard.setAccessoryBarVisible({ isVisible: false });
-  });
+  }).catch(() => {});
 
   // Android back button handler
   import('@capacitor/app').then(({ App: CapApp }) => {
@@ -28,7 +24,7 @@ if (Capacitor.isNativePlatform()) {
         CapApp.minimizeApp();
       }
     });
-  });
+  }).catch(() => {});
 }
 
 const rootElement = document.getElementById('root');

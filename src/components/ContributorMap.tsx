@@ -4,7 +4,7 @@ import { useAppMode } from '../context/AppModeContext';
 import { LeaderboardEntry } from '../hooks/useLeaderboard';
 import { geocodeLocation } from '../utils/geocoder';
 
-const GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
+const GEO_URL = '/countries-110m.json';
 const W = 800;
 const H = 520;
 const DEFAULT_ROTATION: [number, number, number] = [-10, -20, 0];
