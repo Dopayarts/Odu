@@ -24,7 +24,7 @@ interface UserRecord {
 const CATEGORIES = ['greeting', 'family', 'food', 'market', 'travel', 'proverb'];
 const DIFFICULTIES = ['beginner', 'intermediate', 'advanced'];
 
-type Tab = 'flags' | 'users' | 'quiz';
+type Tab = 'flags' | 'users' | 'quiz' | 'museums';
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const { isDarkMode } = useAppMode();
@@ -153,11 +153,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
         {/* Tabs */}
         <div className={`flex border-b mx-6 flex-shrink-0 ${isDarkMode ? 'border-slate-700' : 'border-slate-200'}`}>
-          {(['flags', 'users', 'quiz'] as Tab[]).map(tab => {
+          {(['flags', 'users', 'quiz', 'museums'] as Tab[]).map(tab => {
             const pendingCount = tab === 'flags' ? flags.filter(f => f.status === 'pending').length : 0;
             const label = tab === 'flags'
               ? `🚩 Flags${pendingCount > 0 ? ` (${pendingCount})` : ''}`
-              : tab === 'users' ? `Users (${users.length})` : 'Quiz';
+              : tab === 'users' ? `Users (${users.length})`
+              : tab === 'museums' ? '🏛 Museums'
+              : 'Quiz';
             return (
               <button
                 key={tab}
@@ -516,6 +518,69 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ── MUSEUMS TAB ───────────────────────────────────────────── */}
+          {activeTab === 'museums' && (
+            <div className="space-y-5">
+              {GOOGLE_SHEET_EDIT_URL && (
+                <button
+                  onClick={() => window.open(GOOGLE_SHEET_EDIT_URL, '_blank')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all hover:scale-[1.02] active:scale-95 ${isDarkMode ? 'bg-slate-800/50 border-green-700/50 hover:border-green-500' : 'bg-green-50 border-green-200 hover:border-green-400'}`}
+                >
+                  <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black flex-shrink-0 ${isDarkMode ? 'bg-green-600/20 text-green-400' : 'bg-green-600 text-white'}`}>📊</span>
+                  <div className="text-left">
+                    <div className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Training Data Sheet</div>
+                    <div className={`text-xs font-bold ${isDarkMode ? 'text-green-400' : 'text-green-700'}`}>Open Google Sheet</div>
+                  </div>
+                </button>
+              )}
+
+              <div className={`rounded-2xl border-2 p-4 space-y-4 ${isDarkMode ? 'border-purple-800/40 bg-purple-900/10' : 'border-purple-200 bg-purple-50'}`}>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🏛</span>
+                  <h3 className={`font-black text-sm ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>How to Add a Museum Contributor</h3>
+                </div>
+                <p className={`text-xs leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                  Museums appear on the global map as <strong className="text-purple-400">purple pulsing dots</strong>, distinct from regular contributors (green) and top-3 (yellow). Any username containing the word <code className={`px-1 rounded text-[11px] ${isDarkMode ? 'bg-slate-700 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>museum</code> is automatically detected.
+                </p>
+
+                {([
+                  { step: '1', title: 'Open the Training Data Sheet', body: 'Click the button above. Go to the contributions tab (the main sheet, not quiz).' },
+                  { step: '2', title: 'Add a row manually', body: "Scroll to the bottom and add a new row. Fill in: Timestamp (today's date), English, Yoruba, Username, Email, Mode, Location." },
+                  { step: '3', title: 'Name the username correctly', body: 'The username MUST include "museum" anywhere — e.g. "BritishMuseum", "LagosMuseum", "Museum_Ife". Capitalisation doesn\'t matter.' },
+                  { step: '4', title: 'Set the location', body: "Enter the museum's city/country in the Location column — e.g. \"London, UK\" or \"Lagos, Nigeria\". This places the dot on the map." },
+                  { step: '5', title: 'Add as many rows as needed', body: 'Each row counts as one contribution. Add multiple rows to give the museum a higher leaderboard count.' },
+                  { step: '6', title: 'Refresh the leaderboard', body: 'Open the leaderboard in the app and click Refresh. The museum appears in Rankings and as a purple dot on the Map tab.' },
+                ] as { step: string; title: string; body: string }[]).map(({ step, title, body }) => (
+                  <div key={step} className="flex gap-3">
+                    <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black flex-shrink-0 mt-0.5 ${isDarkMode ? 'bg-purple-700/50 text-purple-300' : 'bg-purple-600 text-white'}`}>{step}</span>
+                    <div>
+                      <p className={`text-xs font-black ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{title}</p>
+                      <p className={`text-xs leading-relaxed mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{body}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className={`rounded-xl border px-4 py-3 ${isDarkMode ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50'}`}>
+                <p className={`text-[10px] font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Quick Reference</p>
+                <div className="space-y-1">
+                  {([
+                    ['Username rule', 'Must contain "museum" (any case)'],
+                    ['Dot colour', 'Purple on the map'],
+                    ['Animation', 'Pulsing ring (like top-3)'],
+                    ['Data source', 'Google Sheet — add rows manually'],
+                    ['To update count', 'Add more rows for that username'],
+                  ] as [string, string][]).map(([k, v]) => (
+                    <div key={k} className="flex justify-between text-xs gap-2">
+                      <span className={`font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{k}</span>
+                      <span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </div>
