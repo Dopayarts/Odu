@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Keyboard from './Keyboard';
 import { YORUBA_VOWELS } from '../constants';
 import { useAppMode } from '../context/AppModeContext';
+import platform from '../utils/platform';
 import type { WordSuggestionsReturn, WordEntry } from '../hooks/useWordSuggestions';
 
 // Map plain vowels to their diacritic forms for bracket shortcuts
@@ -12,6 +13,39 @@ for (const [, val] of Object.entries(YORUBA_VOWELS)) {
   VOWEL_ACUTE[val.base.toLowerCase()] = val.high.toLowerCase();
   VOWEL_GRAVE[val.base.toUpperCase()] = val.low.toUpperCase();
   VOWEL_ACUTE[val.base.toUpperCase()] = val.high.toUpperCase();
+}
+
+// Reverse map: any vowel form (base/high/low, upper/lower) → key in YORUBA_VOWELS
+const CHAR_TO_VOWEL_KEY: Record<string, string> = {};
+for (const [key, val] of Object.entries(YORUBA_VOWELS)) {
+  [val.base, val.high, val.low].forEach(c => {
+    CHAR_TO_VOWEL_KEY[c] = key;
+    CHAR_TO_VOWEL_KEY[c.toUpperCase()] = key;
+  });
+}
+
+// Sub-character expansions: e→ẹ (eh), o→ọ (or), s→ṣ (sh, no tones)
+const VOWEL_SUBCHAR: Record<string, { key: string; label: string; hasTones: boolean }> = {
+  'e': { key: 'ẹ', label: 'eh', hasTones: true },
+  'o': { key: 'ọ', label: 'or', hasTones: true },
+  's': { key: 'ṣ', label: 'sh', hasTones: false },
+};
+
+const TONE_FREQS = [261.63, 293.66, 329.63]; // Do (C4), Re (D4), Mi (E4)
+function playMobileTone(index: number) {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(TONE_FREQS[index], ctx.currentTime);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.6);
+  } catch (_) {}
 }
 
 interface WriterPanelProps {
@@ -55,7 +89,14 @@ const WriterPanel: React.FC<WriterPanelProps> = ({ onSaveContribution, wordSugge
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
   const editorRef = useRef<HTMLTextAreaElement>(null);
+  const savedCursorRef = useRef<number>(0);
   const effectiveShift = isShiftToggled || isShiftPressed;
+
+  // Mobile tone picker state
+  const [mobileToneVowel, setMobileToneVowel] = useState<string | null>(null);
+  const [mobileIsUpper, setMobileIsUpper] = useState(false);
+  const [mobileReplaceLen, setMobileReplaceLen] = useState(1);
+  const [mobileSOnly, setMobileSOnly] = useState(false); // true for s→ṣ (no tones)
 
   // Update suggestions when editor text or cursor changes
   const updateSuggestions = useCallback(() => {
@@ -164,6 +205,84 @@ const WriterPanel: React.FC<WriterPanelProps> = ({ onSaveContribution, wordSugge
     setDiacriticIndex(0);
     setToneModeActive(false);
   }, [effectiveShift, handleInput]);
+
+  // Mobile tone picker — reads cursor directly at call time (fixes unreliable button)
+  const openTonePicker = useCallback((cursorPos?: number) => {
+    const pos = cursorPos ?? savedCursorRef.current;
+    if (pos === 0) return;
+
+    const char2 = editorText.substring(pos - 2, pos);
+    const char1 = editorText.substring(pos - 1, pos);
+    const char1Lower = char1.toLowerCase();
+
+    // s / S → ṣ only (no tones)
+    if (char1Lower === 's') {
+      setMobileToneVowel(null);
+      setMobileIsUpper(char1 !== char1Lower);
+      setMobileReplaceLen(1);
+      setMobileSOnly(true);
+      return;
+    }
+
+    // Try 2-char match first (e.g. ẹ́ = ẹ + combining accent)
+    let foundKey: string | null = null;
+    let replaceLen = 1;
+    let isUpper = false;
+
+    if (char2.length === 2 && CHAR_TO_VOWEL_KEY[char2]) {
+      foundKey = CHAR_TO_VOWEL_KEY[char2];
+      replaceLen = 2;
+      isUpper = char2[0] !== char2[0].toLowerCase();
+    } else if (CHAR_TO_VOWEL_KEY[char1]) {
+      foundKey = CHAR_TO_VOWEL_KEY[char1];
+      replaceLen = 1;
+      isUpper = char1 !== char1.toLowerCase();
+    }
+
+    if (!foundKey) return;
+    setMobileToneVowel(foundKey);
+    setMobileIsUpper(isUpper);
+    setMobileReplaceLen(replaceLen);
+    setMobileSOnly(false);
+  }, [editorText]);
+
+  const closeMobilePicker = useCallback(() => {
+    setMobileToneVowel(null);
+    setMobileSOnly(false);
+  }, []);
+
+  // Replace char before cursor with the given string, play tone, refocus
+  const applyMobileChar = useCallback((char: string, toneIndex: number | null) => {
+    const pos = savedCursorRef.current;
+    const newText = editorText.substring(0, pos - mobileReplaceLen) + char + editorText.substring(pos);
+    setEditorText(newText);
+    if (autoCopy) navigator.clipboard.writeText(newText).catch(() => {});
+    if (toneIndex !== null) playMobileTone(toneIndex);
+    const newPos = pos - mobileReplaceLen + char.length;
+    savedCursorRef.current = newPos;
+    setTimeout(() => {
+      if (editorRef.current) {
+        editorRef.current.selectionStart = editorRef.current.selectionEnd = newPos;
+        editorRef.current.focus();
+      }
+    }, 50);
+    setMobileToneVowel(null);
+    setMobileSOnly(false);
+  }, [editorText, mobileReplaceLen, autoCopy]);
+
+  const applyMobileTone = useCallback((toneIndex: number) => {
+    if (!mobileToneVowel) return;
+    const data = YORUBA_VOWELS[mobileToneVowel];
+    if (!data) return;
+    const raw = [data.low, data.base, data.high][toneIndex];
+    const char = mobileIsUpper ? raw.toUpperCase() : raw;
+    applyMobileChar(char, toneIndex);
+  }, [mobileToneVowel, mobileIsUpper, applyMobileChar]);
+
+  // Drill into sub-char (e→ẹ, o→ọ) — keeps replaceLen so we still replace original char
+  const drillIntoSubChar = useCallback((subKey: string) => {
+    setMobileToneVowel(subKey);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -323,17 +442,28 @@ const WriterPanel: React.FC<WriterPanelProps> = ({ onSaveContribution, wordSugge
             </div>
             {/* Yoruba input */}
             <div className="relative group">
-              <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
-                Yoruba (with tones)
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
+                  Yoruba (with tones)
+                </label>
+                {platform.isMobile && (
+                  <button
+                    onPointerDown={(e) => { e.preventDefault(); const pos = editorRef.current?.selectionStart ?? savedCursorRef.current; savedCursorRef.current = pos; openTonePicker(pos); }}
+                    className="flex items-center gap-1 px-3 py-1 rounded-xl bg-orange-500 text-white text-[10px] font-black uppercase tracking-wider shadow-lg shadow-orange-500/30 active:scale-95 transition-all"
+                  >
+                    <span>♪</span><span>Tone</span>
+                  </button>
+                )}
+              </div>
               <div className="relative">
                 <textarea
                   ref={editorRef}
                   value={editorText}
-                  onChange={(e) => setEditorText(e.target.value)}
-                  onSelect={updateSuggestions}
-                  onClick={updateSuggestions}
-                  placeholder="Type Yoruba here — double-press SHIFT for Tones..."
+                  onChange={(e) => { setEditorText(e.target.value); savedCursorRef.current = e.target.selectionStart ?? 0; }}
+                  onSelect={() => { updateSuggestions(); savedCursorRef.current = editorRef.current?.selectionStart ?? 0; }}
+                  onClick={() => { updateSuggestions(); savedCursorRef.current = editorRef.current?.selectionStart ?? 0; }}
+                  onBlur={() => { savedCursorRef.current = editorRef.current?.selectionStart ?? savedCursorRef.current; }}
+                  placeholder="Type Yoruba here — use the ♪ Tone button for tonal marks..."
                   className={`w-full min-h-[5.5rem] max-h-52 p-3 sm:p-5 text-xl sm:text-2xl font-medium leading-relaxed rounded-2xl border-2 outline-none transition-all resize-y shadow-inner ${
                     toneModeActive
                       ? 'border-emerald-500 bg-emerald-50/5 ring-4 ring-emerald-500/5'
@@ -360,14 +490,25 @@ const WriterPanel: React.FC<WriterPanelProps> = ({ onSaveContribution, wordSugge
           </div>
         ) : (
           <div className="relative group">
+            {platform.isMobile && (
+              <div className="flex justify-end mb-2">
+                <button
+                  onPointerDown={(e) => { e.preventDefault(); const pos = editorRef.current?.selectionStart ?? savedCursorRef.current; savedCursorRef.current = pos; openTonePicker(pos); }}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-orange-500 text-white text-[10px] font-black uppercase tracking-wider shadow-lg shadow-orange-500/30 active:scale-95 transition-all"
+                >
+                  <span>♪</span><span>Tone</span>
+                </button>
+              </div>
+            )}
             <div className="relative">
               <textarea
                 ref={editorRef}
                 value={editorText}
-                onChange={(e) => setEditorText(e.target.value)}
-                onSelect={updateSuggestions}
-                onClick={updateSuggestions}
-                placeholder="Start typing or double-press SHIFT for Tones (Do-Re-Mi)..."
+                onChange={(e) => { setEditorText(e.target.value); savedCursorRef.current = e.target.selectionStart ?? 0; }}
+                onSelect={() => { updateSuggestions(); savedCursorRef.current = editorRef.current?.selectionStart ?? 0; }}
+                onClick={() => { updateSuggestions(); savedCursorRef.current = editorRef.current?.selectionStart ?? 0; }}
+                onBlur={() => { savedCursorRef.current = editorRef.current?.selectionStart ?? savedCursorRef.current; }}
+                placeholder="Start typing — use the ♪ Tone button for tonal marks..."
                 className={`w-full min-h-[10rem] max-h-[24rem] p-4 sm:p-8 text-xl sm:text-2xl font-medium leading-relaxed rounded-3xl border-2 outline-none transition-all resize-y shadow-inner ${
                   toneModeActive
                     ? 'border-emerald-500 bg-emerald-50/5 ring-4 ring-emerald-500/5'
@@ -389,23 +530,128 @@ const WriterPanel: React.FC<WriterPanelProps> = ({ onSaveContribution, wordSugge
         )}
       </div>
 
-      <div className={`p-3 sm:p-6 border-t transition-colors duration-300 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-100'}`}>
-        <Keyboard
-          onInput={handleInput}
-          onBackspace={handleBackspace}
-          onSpace={handleSpace}
-          isShiftToggled={isShiftToggled}
-          setIsShiftToggled={setIsShiftToggled}
-          isShiftPressed={isShiftPressed}
-          toneModeActive={toneModeActive}
-          setToneModeActive={setToneModeActive}
-          activeVowel={activeVowel}
-          setActiveVowel={setActiveVowel}
-          diacriticIndex={diacriticIndex}
-          onDiacriticSelect={confirmDiacritic}
-          isDarkMode={isDarkMode}
-        />
-      </div>
+      {!platform.isMobile && (
+        <div className={`p-3 sm:p-6 border-t transition-colors duration-300 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-100'}`}>
+          <Keyboard
+            onInput={handleInput}
+            onBackspace={handleBackspace}
+            onSpace={handleSpace}
+            isShiftToggled={isShiftToggled}
+            setIsShiftToggled={setIsShiftToggled}
+            isShiftPressed={isShiftPressed}
+            toneModeActive={toneModeActive}
+            setToneModeActive={setToneModeActive}
+            activeVowel={activeVowel}
+            setActiveVowel={setActiveVowel}
+            diacriticIndex={diacriticIndex}
+            onDiacriticSelect={confirmDiacritic}
+            isDarkMode={isDarkMode}
+          />
+        </div>
+      )}
+
+      {/* ── Mobile tone picker modal ──────────────────────────────────────── */}
+      {(mobileToneVowel || mobileSOnly) && (() => {
+        const isSOnly = mobileSOnly && !mobileToneVowel;
+        const data = mobileToneVowel ? YORUBA_VOWELS[mobileToneVowel] : null;
+        const baseKey = mobileToneVowel?.toLowerCase() ?? '';
+        const subInfo = VOWEL_SUBCHAR[baseKey];
+
+        return (
+          <div
+            className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm"
+            onClick={closeMobilePicker}
+          >
+            <div
+              className={`w-full max-w-sm rounded-3xl p-5 shadow-2xl border-2 ${isDarkMode ? 'bg-slate-900 border-orange-500/30' : 'bg-white border-orange-300'}`}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-xl bg-orange-500 text-white flex items-center justify-center text-base font-black">♪</span>
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-orange-500">
+                      {isSOnly ? 'Sub-character' : 'Tonal Mark'}
+                    </p>
+                    <p className={`text-xs font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                      {isSOnly
+                        ? 'Insert sub-character'
+                        : <>Choose tone for <span className="text-orange-400 font-black">{mobileIsUpper ? (data?.base.toUpperCase() ?? '') : (data?.base ?? '')}</span></>
+                      }
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={closeMobilePicker}
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black ${isDarkMode ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'}`}
+                >✕</button>
+              </div>
+
+              {isSOnly ? (
+                /* s → just show ṣ / sh */
+                <button
+                  onClick={() => applyMobileChar(mobileIsUpper ? 'Ṣ' : 'ṣ', null)}
+                  className={`w-full flex flex-col items-center gap-1 py-5 rounded-2xl border-2 transition-all active:scale-95 ${
+                    isDarkMode ? 'bg-orange-950/40 border-orange-500/40' : 'bg-orange-50 border-orange-200'
+                  }`}
+                >
+                  <span className="text-4xl font-black text-orange-400">{mobileIsUpper ? 'Ṣ' : 'ṣ'}</span>
+                  <span className="text-sm font-black text-orange-500">sh</span>
+                </button>
+              ) : (
+                <>
+                  {/* 3 tone options */}
+                  <div className="grid grid-cols-3 gap-3">
+                    {([
+                      { raw: data!.low,  label: 'Do', sublabel: 'Low',  freq: 0 },
+                      { raw: data!.base, label: 'Re', sublabel: 'Mid',  freq: 1 },
+                      { raw: data!.high, label: 'Mi', sublabel: 'High', freq: 2 },
+                    ] as const).map(({ raw, label, sublabel, freq }) => {
+                      const char = mobileIsUpper ? raw.toUpperCase() : raw;
+                      return (
+                        <button
+                          key={label}
+                          onClick={() => applyMobileTone(freq)}
+                          className={`flex flex-col items-center gap-1 py-4 rounded-2xl border-2 transition-all active:scale-95 ${
+                            isDarkMode
+                              ? 'bg-orange-950/40 border-orange-500/40 hover:bg-orange-500/20'
+                              : 'bg-orange-50 border-orange-200 hover:bg-orange-100'
+                          }`}
+                        >
+                          <span className="text-3xl font-black text-orange-400">{char}</span>
+                          <span className="text-[11px] font-black text-orange-500">{label}</span>
+                          <span className={`text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{sublabel}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Sub-character option (eh / or) */}
+                  {subInfo && subInfo.hasTones && (
+                    <button
+                      onClick={() => drillIntoSubChar(subInfo.key)}
+                      className={`mt-3 w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all active:scale-95 ${
+                        isDarkMode
+                          ? 'bg-slate-800 border-slate-600 hover:border-orange-500/60'
+                          : 'bg-slate-50 border-slate-200 hover:border-orange-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={`text-2xl font-black ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>
+                          {mobileIsUpper ? subInfo.key.toUpperCase() : subInfo.key}
+                        </span>
+                        <span className="text-xs font-black text-orange-400 uppercase tracking-wider">{subInfo.label}</span>
+                      </div>
+                      <span className={`text-[10px] font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>tap for tones →</span>
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {showToast && (
         <div className="fixed bottom-12 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-10 py-5 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-slate-700 font-black text-sm z-[100] animate-in fade-in slide-in-from-bottom-8">
