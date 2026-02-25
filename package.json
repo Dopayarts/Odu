@@ -4,8 +4,8 @@
   "type": "module",
   "description": "Professional Yoruba Diacritic Keyboard",
   "author": "Peace Toba Olatunji (Dopay)",
-  "license": "UNLICENSED",
-  "private": true,
+  "license": "MIT",
+  "private": false,
   "repository": "https://github.com/Dopayarts/Odu",
   "main": "main.cjs",
   "scripts": {
