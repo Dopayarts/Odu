@@ -36,3 +36,8 @@ release/
 # Capacitor native platforms
 ios/
 android/
+
+# Keystore and signing credentials
+*.keystore
+*.jks
+key.properties
