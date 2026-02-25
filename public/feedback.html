@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Feedback – ODU Yoruba Writer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 16px;
+      line-height: 1.7;
+      color: #1a1a1a;
+      background: #fafafa;
+      padding: 2rem 1rem 4rem;
+    }
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+      background: #fff;
+      border: 1px solid #e5e5e5;
+      border-radius: 10px;
+      padding: 2.5rem 2.5rem 3rem;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.8rem;
+      text-decoration: none;
+    }
+    .logo-mark {
+      width: 40px;
+      height: 40px;
+      background: #10b981;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .logo-text { font-weight: 700; font-size: 1.1rem; color: #111; }
+    .logo-sub  { font-size: 0.8rem; color: #666; }
+    h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: 0.4rem; }
+    .sub { color: #666; font-size: 0.95rem; margin-bottom: 2rem; }
+    h2 { font-size: 1rem; font-weight: 700; margin: 1.8rem 0 0.5rem; color: #111; }
+    p  { margin-bottom: 0.9rem; }
+    a  { color: #2563eb; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .card {
+      border: 1px solid #e5e5e5;
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      margin: 0.75rem 0;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .card:hover {
+      border-color: #10b981;
+      box-shadow: 0 0 0 3px rgba(16,185,129,0.08);
+      text-decoration: none;
+    }
+    .card-icon {
+      font-size: 1.6rem;
+      line-height: 1;
+      flex-shrink: 0;
+      margin-top: 0.1rem;
+    }
+    .card-title { font-weight: 700; font-size: 1rem; color: #111; margin-bottom: 0.2rem; }
+    .card-desc  { font-size: 0.9rem; color: #555; line-height: 1.5; }
+    .card-action {
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #10b981;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid #f0f0f0;
+      margin: 2rem 0;
+    }
+
+    .email-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin: 0.75rem 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .email-addr {
+      font-family: monospace;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #065f46;
+    }
+    .copy-btn {
+      background: #10b981;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 0.4rem 0.9rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .copy-btn:hover { background: #059669; }
+
+    .tips { padding-left: 1.4rem; margin: 0.5rem 0 0.9rem; }
+    .tips li { margin-bottom: 0.3rem; font-size: 0.95rem; }
+
+    footer { margin-top: 2.5rem; font-size: 0.85rem; color: #999; }
+
+    @media (max-width: 600px) {
+      .container { padding: 1.5rem 1.2rem 2rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="logo">
+    <div class="logo-mark">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="11" cy="11" r="10" fill="#0f172a"/>
+        <circle cx="11" cy="11" r="6.8" fill="white"/>
+        <path d="M4.7 11 L6.7 8.4 L8.7 11 L10.7 8.4 L12.7 11 L14.7 8.4 L16.7 11 L14.7 13.6 L12.7 11 L10.7 13.6 L8.7 11 L6.7 13.6 Z" fill="#0f172a"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-text">ODU Yoruba Writer</div>
+      <div class="logo-sub">Feedback &amp; Bug Reports</div>
+    </div>
+  </div>
+
+  <h1>We'd love your feedback</h1>
+  <p class="sub">
+    ODU is built for writers, learners, and language communities. Your feedback
+    directly shapes how the app improves. Please share anything — bugs, ideas,
+    suggestions, or general thoughts.
+  </p>
+
+  <!-- Option 1: Email -->
+  <h2>📧 Send an email</h2>
+  <p>Best for detailed feedback, feature requests, or private concerns.</p>
+
+  <div class="email-box">
+    <span class="email-addr" id="email-addr">olatunjipt@gmail.com</span>
+    <button class="copy-btn" onclick="copyEmail()">Copy</button>
+  </div>
+
+  <a class="card" href="mailto:olatunjipt@gmail.com?subject=ODU%20Yoruba%20Writer%20%E2%80%94%20Feedback&body=App%20version%3A%201.4.6%0ADevice%3A%20%5Byour%20device%5D%0AAndroid%20version%3A%20%5Byour%20Android%20version%5D%0A%0AFeedback%3A%0A">
+    <div class="card-icon">✉️</div>
+    <div>
+      <div class="card-title">Open in email app</div>
+      <div class="card-desc">Pre-filled with subject line and version info.</div>
+      <div class="card-action">olatunjipt@gmail.com →</div>
+    </div>
+  </a>
+
+  <hr class="divider"/>
+
+  <!-- Option 2: GitHub -->
+  <h2>🐛 Report a bug on GitHub</h2>
+  <p>Best for reproducible issues. Public — others can track and comment.</p>
+
+  <a class="card" href="https://github.com/Dopayarts/Odu/issues/new?template=bug_report&title=%5BBug%5D+&labels=bug" target="_blank" rel="noopener">
+    <div class="card-icon">🐞</div>
+    <div>
+      <div class="card-title">Open a bug report</div>
+      <div class="card-desc">Describe what happened, what you expected, and steps to reproduce.</div>
+      <div class="card-action">github.com/Dopayarts/Odu →</div>
+    </div>
+  </a>
+
+  <a class="card" href="https://github.com/Dopayarts/Odu/issues/new?template=feature_request&title=%5BIdea%5D+&labels=enhancement" target="_blank" rel="noopener">
+    <div class="card-icon">💡</div>
+    <div>
+      <div class="card-title">Suggest a feature or improvement</div>
+      <div class="card-desc">Got an idea? We read every suggestion.</div>
+      <div class="card-action">github.com/Dopayarts/Odu →</div>
+    </div>
+  </a>
+
+  <hr class="divider"/>
+
+  <!-- Tips for good feedback -->
+  <h2>Tips for helpful feedback</h2>
+  <ul class="tips">
+    <li>Include your <strong>device model</strong> and <strong>Android version</strong></li>
+    <li>Describe what you were trying to do and what happened instead</li>
+    <li>Screenshots or screen recordings are very welcome</li>
+    <li>For diacritic issues, paste the exact text that wasn't working</li>
+    <li>For leaderboard or map issues, include your username</li>
+  </ul>
+
+  <hr class="divider"/>
+
+  <p style="font-size:0.9rem; color:#555;">
+    Response time is typically within <strong>3 business days</strong>.
+    For account deletion requests, see the
+    <a href="data-deletion.html">data deletion page</a>.
+    For privacy questions, see the
+    <a href="privacy-policy.html">privacy policy</a>.
+  </p>
+
+  <footer>
+    &copy; 2026 Peace Toba Olatunji (Dopay) &mdash; ODU Yoruba Writer &mdash;
+    <a href="https://github.com/Dopayarts/Odu">github.com/Dopayarts/Odu</a>
+  </footer>
+
+</div>
+
+<script>
+  function copyEmail() {
+    navigator.clipboard.writeText('olatunjipt@gmail.com').then(function() {
+      var btn = document.querySelector('.copy-btn');
+      btn.textContent = 'Copied!';
+      setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+    });
+  }
+</script>
+</body>
+</html>
