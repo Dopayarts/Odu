@@ -1,0 +1,31 @@
+ODU Yoruba Writer is a professional diacritic keyboard and language tool for writers, students, researchers, and anyone who wants to write fully-marked Yoruba text on their device.
+
+★ DIACRITIC KEYBOARD
+Type correctly toned Yoruba without switching keyboards. A dedicated Diacritic Mode lets you insert tone marks and open vowels (à, á, â, ẹ, ọ, ṣ, è, é, ê and more) with a single tap — no copy-pasting from charts.
+
+★ TRANSLATION CHALLENGES
+Practice Yoruba by completing real translation tasks contributed by the community. Fill-the-gap and full-sentence modes help reinforce vocabulary, tone memory, and grammar.
+
+★ GLOBAL LEADERBOARD
+See how your contributions compare with language enthusiasts from around the world. Rankings update from a live community dataset shared with researchers.
+
+★ CONTRIBUTOR MAP
+Explore a world map showing where ODU contributors are located — from Lagos to London, Atlanta to Berlin. Discover Yoruba language communities wherever they live.
+
+★ LANGUAGE PRESERVATION
+Every sentence you contribute becomes part of an open Yoruba language dataset, supporting AI research and helping ensure Yoruba is well-represented in digital and natural-language systems.
+
+★ PRIVACY-FIRST
+No ads. No third-party tracking. Internet is used only for leaderboard sync and optional account creation — the keyboard works fully offline. Your data is never sold.
+
+★ FREE & OPEN SOURCE
+ODU is free to download and use. The source code is open (MIT licence) on GitHub.
+
+WHO IS IT FOR?
+• Yoruba speakers who want to write correctly toned text on their phones
+• Students and learners studying Yoruba tone and orthography
+• Authors writing books, articles, or content in Yoruba
+• Researchers building Yoruba NLP and language datasets
+• Anyone curious about West African tonal languages
+
+Type Yoruba properly. Preserve the language. Connect with a global community.
